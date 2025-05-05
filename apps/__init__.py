@@ -50,12 +50,18 @@ def create_app(config):
 
     # Initialiser Admin
     from apps.models import Journal, PoleActivite, Money, CategorieComptable, CompteComptable
+    class FullAccessModelView(ModelView):
+        can_create = True
+        can_edit = True
+        can_delete = True
+
     admin = Admin(app, name='HEA Admin', template_mode='bootstrap4')
-    admin.add_view(ModelView(Journal, db.session))
-    admin.add_view(ModelView(PoleActivite, db.session))
-    admin.add_view(ModelView(Money, db.session))
-    admin.add_view(ModelView(CategorieComptable, db.session))
-    admin.add_view(ModelView(CompteComptable, db.session))
+    admin.add_view(FullAccessModelView(Journal, db.session))
+    admin.add_view(FullAccessModelView(PoleActivite, db.session))
+    admin.add_view(FullAccessModelView(Money, db.session))
+    admin.add_view(FullAccessModelView(CategorieComptable, db.session))
+    admin.add_view(FullAccessModelView(CompteComptable, db.session))
+
 
     # Initialiser Blueprints
     register_blueprints(app)
