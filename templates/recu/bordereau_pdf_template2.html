@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bordereau</title>
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+        h2 { text-align: center; margin-bottom: 10px; }
+        .section { margin-bottom: 15px; }
+        .label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid #444; }
+        th, td { padding: 5px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<h2>Bordereau d’Expédition</h2>
+
+<div class="section">
+    <div><span class="label">Entreprise :</span> {{ bordereau.nom_entreprise }}</div>
+    <div><span class="label">Adresse :</span> {{ bordereau.adresse_entreprise }}</div>
+    <div><span class="label">N° Facture :</span> {{ bordereau.numero_facture }}</div>
+    <div><span class="label">N° Client :</span> {{ bordereau.numero_client }}</div>
+    <div><span class="label">Date :</span> {{ bordereau.date.strftime('%d/%m/%Y') }}</div>
+</div>
+
+<div class="section">
+    <div><span class="label">Facturer à :</span> {{ bordereau.client_nom }}</div>
+    <div><span class="label">Adresse :</span> {{ bordereau.client_adresse }}</div>
+    <div><span class="label">Email :</span> {{ bordereau.client_email }}</div>
+    <div><span class="label">Contact :</span> {{ bordereau.client_contact }}</div>
+</div>
+
+<div class="section">
+    <div><span class="label">P.O No :</span> {{ bordereau.po_no }}</div>
+    <div><span class="label">Date Expédition :</span> {{ bordereau.date_expedition.strftime('%d/%m/%Y') if bordereau.date_expedition else '' }}</div>
+    <div><span class="label">Expédié via :</span> {{ bordereau.expedier_via }}</div>
+    <div><span class="label">Vendeur :</span> {{ bordereau.vendeur }}</div>
+    <div><span class="label">FOB :</span> {{ bordereau.fob }}</div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Article</th>
+            <th>Description</th>
+            <th>Quantité</th>
+            <th>Prix Unitaire</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for article in bordereau.articles %}
+            <tr>
+                <td>{{ article.numero_article }}</td>
+                <td>{{ article.description }}</td>
+                <td>{{ article.quantite }}</td>
+                <td>{{ article.prix_unitaire }}</td>
+                <td>{{ article.total|round(2) }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

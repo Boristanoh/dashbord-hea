@@ -1,0 +1,311 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+
+  <!-- [ Main Content ] start -->
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Journal</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Other</a></li>
+                <li class="breadcrumb-item" aria-current="page">Journal</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <!-- [ sample-page ] start -->
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-header">
+              <h5>Journal des Enregistrement</h5>
+            </div>
+            <div class="card-body">
+              <form method="get" class="mb-3">
+                <div class="d-flex align-items-center">
+                  <label for="year" class="form-label me-2 mb-0">Filtrer par année :</label>
+                  <select class="form-select w-auto" name="year" id="year" onchange="this.form.submit()">
+                    {% for year in years %}
+                      <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </form>              
+              
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Pôle d'activité</th>
+                      <th>Compte client</th>
+                      <th>Compte fourniseur</th>
+                      <th>N° de piece</th>
+                      <th>Compte comptable</th>
+                      <th>N° Facture </th>
+                      <th>Désignation</th>
+                      <th>Montant</th>
+                      <th>Devise</th>
+                      <th>Montant en FCFA</th>
+                      <th>Type</th>
+                      <th>Mode de paiement</th>
+                      <th>Catégorie</th>
+                      <th>Enregistré Le</th>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                        <th>par</th>
+                      {% endif %}
+                      <th>Facture</th>
+                    </tr>
+                  </thead>
+                  
+                  
+                  <tbody>
+                    {% for op in operations %}
+                      <tr>
+                        <td></td>
+                        <td>{{ op.date_operation.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ op.pole_activite.nom }}</td>
+
+                        <td>{{ op.code_client }}</td>
+                        <td>{{ op.code_fournisseur }}</td>
+                        <td>{{ op.numero_piece }}</td>
+
+                        <td>{{ op.compte_comptable.numero }} - {{ op.compte_comptable.libelle }}</td>
+                        <td>{{ op.numero_facture }}</td>
+                        <td>{{ op.designation }}</td>
+                        <td>{{ op.montant }}</td>
+                        <td>{{ op.devise.code }}</td>
+                        <td>{{ op.montant_fcfa }}</td>
+                        <td>{{ op.type_operation }}</td>
+                        <td>{{ op.mode_paiement }}</td>
+                        <td>{{ op.categorie.code }} - {{ op.categorie.libelle }}</td>                   
+                        <td>{{ op.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+                        {% if current_user.role.name in ['admin', 'superadmin'] %}
+                          <td>{{ op.utilisateur.username }}</td>
+                        {% endif %}
+                        <td>
+                          <a href="{{ url_for('home_blueprint.recu_journal', operation_id=op.id) }}" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
+                        </td>                   
+                      </tr>
+                    {% else %}
+                      <tr><td colspan="10" class="text-center">Aucune opération enregistrée.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th>#</th>
+                      <th><input id="filter-date" type="text" placeholder="Filtrer par date..." style="width: 100%;" /></th>
+                      <th>Pôle d'activité</th>
+                      <th>Compte client</th>
+                      <th>Compte fourniseur</th>
+                      <th>N° de piece</th>
+                      <th>Compte comptable</th>
+                      <th>N° Facture </th>
+                      <th>Désignation</th>
+                      <th>Montant</th>
+                      <th>Devise</th>
+                      <th>Montant en FCFA</th>
+                      <th>Type</th>
+                      <th>Mode de paiement</th>
+                      <th>Catégorie</th>
+                      <th>Enregistré Le</th>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                        <th>Par</th>
+                      {% endif %}
+                      <th></th> <!-- pour la colonne "Facture" -->
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+        <!-- [ sample-page ] end -->
+      </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" />
+
+<!-- jQuery et DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+
+
+<!-- Plugin de sélection par mois pour Flatpickr -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+
+
+
+<script>
+  $(document).ready(function () {
+      const selectedYear = "{{ selected_year }}";  // injecté depuis Flask
+
+      var table = $('.table').DataTable({
+          language: {
+              url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json'
+          },
+          pageLength: 25,
+          lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tout afficher"]],
+          columnDefs: [{
+              targets: 0, // Colonne numérotation
+              searchable: false,
+              orderable: false,
+          }],
+          drawCallback: function (settings) {
+              let api = this.api();
+              api.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                  cell.innerHTML = i + 1;
+              });
+          },
+          initComplete: function () {
+              this.api().columns().every(function (index) {
+                  var column = this;
+                  var input;
+
+                  // Ignore la colonne d’index (0)
+                  if (index === 0) return;
+
+                  // Colonne 1 = Date
+                  if (index === 1) {
+    input = $('<input type="text" class="filter-date" placeholder="JJ/MM ou MM" style="width: 100%"/>');
+    
+    input.appendTo($(column.footer()).empty());
+
+    flatpickr(input[0], {
+        dateFormat: "m-d",
+        altInput: true,
+        altFormat: "j F",
+        allowInput: true,
+        onChange: function (selectedDates, dateStr, instance) {
+            if (!dateStr) {
+                table.column(1).search('').draw();
+            } else {
+                const [month, day] = dateStr.split("-");
+                const regex = `^${selectedYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                table.column(1).search(regex, true, false).draw();
+            }
+        }
+    });
+                  } else {
+                    input = $('<input type="text" placeholder="Filtrer..." style="width: 100%"/>');
+                    input.appendTo($(column.footer()).empty())
+                        .on('keyup change clear', function () {
+                            if (column.search() !== this.value) {
+                                column.search(this.value).draw();
+                            }
+                        });
+                  }
+              });
+          }
+      });
+
+    //   // Flatpickr : mois/jour uniquement
+    //   flatpickr(".filter-date", {
+    //     dateFormat: "m-d",
+    //     altInput: true,
+    //     altFormat: "j F",
+    //     allowInput: true,
+    //     onChange: function (selectedDates, dateStr, instance) {
+    //         if (!dateStr) {
+    //             table.column(1).search('').draw();
+    //         } else {
+    //             const [month, day] = dateStr.split("-");
+    //             const regex = `^{{ selected_year }}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    //             table.column(1).search(regex, true, false).draw();
+    //         }
+    //     }
+    // });
+
+      // Si tu veux permettre uniquement le mois : tape par exemple "04-" pour avril
+      $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+          const input = $('.filter-date').val();
+          const date = data[1]; // colonne Date (au format YYYY-MM-DD)
+          if (!input) return true;
+          return date.includes(input);
+      });
+  });
+</script>
+
+
+<!-- <script>
+  $(document).ready(function () {
+      if (!$.fn.DataTable.isDataTable('.table')) {
+          var table = $('.table').DataTable({
+              language: {
+                  url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json'
+              },
+              pageLength: 25,
+              lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tout afficher"]],
+              initComplete: function () {
+                  this.api().columns().every(function (index) {
+                      var column = this;
+                      var input;
+
+                      if (index === 0) {
+                          input = $('<input id="filter-date" type="text" placeholder="Date" style="width: 100%;" />');
+                      } else {
+                          input = $('<input type="text" placeholder="Filtrer..." style="width: 100%;" />');
+                      }
+
+                      input.appendTo($(column.footer()).empty())
+                          .on('keyup change clear', function () {
+                              if (column.search() !== this.value) {
+                                  column.search(this.value).draw();
+                              }
+                          });
+                  });
+
+                  // Appliquer Flatpickr une fois que l'input a été ajouté
+                  flatpickr("#filter-date", {
+                      dateFormat: "Y-m-d",
+                      altInput: true,
+                      altFormat: "j F Y",
+                      allowInput: true,
+                      onChange: function (selectedDates, dateStr) {
+                          table.column(0).search(dateStr).draw(); // colonne 0 = Date
+                      }
+                  });
+              }
+          });
+
+          // Permet filtrage par année ou mois partiel
+          $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+              const filter = $('#filter-date').val();
+              const date = data[0];
+
+              if (!filter) return true;
+              return date.startsWith(filter);
+          });
+      }
+  });
+</script> -->
+
+
+{% endblock content %}

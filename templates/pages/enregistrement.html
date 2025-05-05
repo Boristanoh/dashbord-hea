@@ -1,0 +1,185 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<style>
+  /* Correction du style du label pour les champs select2 */
+  label.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #495057;
+  }
+
+  /* Correction pour le select2 */
+  .select2-container .select2-selection--single {
+    height: 38px; /* même hauteur qu'un form-control classique */
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    border: 1px solid #ced4da;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 24px; /* centrer le texte verticalement */
+  }
+</style>
+
+
+  <!-- [ Main Content ] start -->
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Enregistrement</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Other</a></li>
+                <li class="breadcrumb-item" aria-current="page">Enregistrement</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <!-- [ sample-page ] start -->
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-header">
+              <h5>Formulaire d'enregistrement</h5>
+            </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            <div class="card-body">
+
+              <form method="POST" action="{{ url_for('home_blueprint.create_operation') }}">
+                {{ form.hidden_tag() }}
+  
+                <div class="form-group">
+                  {{ form.date_operation.label(class="form-label") }}
+                  {{ form.date_operation(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.pole_activite.label(class="form-label") }}
+                  {{ form.pole_activite(class="form-control select2") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.code_client.label(class="form-label") }}
+                  {{ form.code_client(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.code_fournisseur.label(class="form-label") }}
+                  {{ form.code_fournisseur(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.numero_piece.label(class="form-label") }}
+                  {{ form.numero_piece(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.compte_comptable.label(class="form-label") }}
+                  {{ form.compte_comptable(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.numero_facture.label(class="form-label") }}
+                  {{ form.numero_facture(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.designation.label(class="form-label") }}
+                  {{ form.designation(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.montant.label(class="form-label") }}
+                  {{ form.montant(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.devise.label(class="form-label") }}
+                  {{ form.devise(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.type_operation.label(class="form-label") }}
+                  {{ form.type_operation(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.mode_paiement.label(class="form-label") }}
+                  {{ form.mode_paiement(class="form-control") }}
+                </div>
+  
+                <div class="form-group">
+                  {{ form.categorie.label(class="form-label") }}
+                  {{ form.categorie(class="form-control") }}
+                </div>
+  
+                <div class="form-group text-center mt-4">
+                  {{ form.submit(class="btn btn-primary") }}
+                </div>
+  
+              </form>
+  
+            </div>
+          </div>
+        </div>
+        <!-- [ sample-page ] end -->
+      </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- jQuery nécessaire pour Select2 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+      $('.select2').select2({
+          placeholder: "Sélectionner...",
+          allowClear: true
+      });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+      $('.select2').select2({
+          placeholder: "Sélectionner...",
+          allowClear: true
+      });
+  });
+</script>
+
+
+{% endblock content %}

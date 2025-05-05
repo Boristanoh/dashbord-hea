@@ -1,0 +1,696 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Home</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Dashboard</a></li>
+                <li class="breadcrumb-item" aria-current="page">Home</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <form method="get" class="row g-2 align-items-end mb-4">
+            <div class="col-md-3">
+              <label for="periode">Période</label>
+              <select name="periode" id="periode" class="form-select">
+                <option value="mois" {% if request.args.get('periode') == 'mois' %}selected{% endif %}>Mois en cours</option>
+                <option value="jour" {% if request.args.get('periode') == 'jour' %}selected{% endif %}>Aujourd'hui</option>
+                <option value="semaine" {% if request.args.get('periode') == 'semaine' %}selected{% endif %}>Cette semaine</option>
+                <option value="personnalise" {% if request.args.get('periode') == 'personnalise' %}selected{% endif %}>Personnalisée</option>
+              </select>
+            </div>
+          
+            <div class="col-md-3 filtre-personnalise d-none">
+              <label for="annee">Année</label>
+              <select name="annee" id="annee" class="form-select">
+                <option value="">-- Choisir --</option>
+                {% for a in annees %}
+                      <option value="{{ a }}" {% if request.args.get('annee')|int == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          
+            <div class="col-md-3 filtre-personnalise d-none">
+              <label for="mois">Mois</label>
+              <select name="mois" id="mois" class="form-select" disabled>
+                <option value="">-- Choisir --</option>
+                {% for k, v in mois_dict.items() %}
+                  <option value="{{ k }}" {% if request.args.get('mois')|int == k %} selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          
+            <div class="col-md-3 filtre-personnalise d-none">
+              <label for="jour">Jour</label>
+              <select name="jour" id="jour" class="form-select" disabled>
+                <option value="">-- Choisir --</option>
+              </select>
+            </div>
+          
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary w-100">Appliquer</button>
+            </div>
+            <div class="col-md-2">
+                <a href="{{ url_for('home_blueprint.index') }}" class="btn btn-secondary w-100">Réinitialiser</a>
+              </div>              
+          </form>
+          
+        <!-- [ daily sales section ] start -->
+        {% set ca_val = stats['ca'].val %}
+        {% set ca_delta = stats['ca'].delta %}
+        {% set ca_up = ca_delta > 0 %}
+        {% set ca_down = ca_delta < 0 %}
+        {% set ca_neutre = ca_delta == 0 %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="mb-4">Chiffre d'affaires</h6>
+                    <div class="row d-flex align-items-center">
+                        <div class="col-9">
+                            <h3 class="f-w-300 d-flex align-items-center m-b-0">
+                                {% if ca_up %}
+                                <i class="feather icon-arrow-up text-success f-30 m-r-10"></i>
+                                {% elif ca_down %}
+                                <i class="feather icon-arrow-down text-danger f-30 m-r-10"></i>
+                                
+                                {% endif %}
+                                {{ "{:,.0f}".format(ca_val).replace(",", " ") }}
+                            </h3>
+                        </div>
+                        <div class="col-3 text-end">
+                            <p class="m-b-0">
+                                {% if ca_neutre %}
+                                --
+                                {% else %}
+                                {{ ca_delta }}%
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="progress m-t-30" style="height: 7px;">
+                        <div class="progress-bar {{ 'bg-success' if ca_up else 'bg-danger' if ca_down else 'bg-secondary' }}"
+                            role="progressbar"
+                            style="width: {{ ca_delta|abs if not ca_neutre else 0 }}%;"
+                            aria-valuenow="{{ ca_delta }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [ daily sales section ] end -->
+
+        <!-- [ Monthly  sales section ] start -->
+        {% set entree_val = stats['entree'].val %}
+        {% set entree_delta = stats['entree'].delta %}
+        {% set entree_up = entree_delta > 0 %}
+        {% set entree_down = entree_delta < 0 %}
+        {% set entree_neutre = entree_delta == 0 %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="mb-4">Entrées (FCFA)</h6>
+                    <div class="row d-flex align-items-center">
+                        <div class="col-9">
+                            <h3 class="f-w-300 d-flex align-items-center m-b-0">
+                                {% if entree_up %}
+                                <i class="feather icon-arrow-up text-success f-30 m-r-10"></i>
+                                {% elif entree_down %}
+                                <i class="feather icon-arrow-down text-danger f-30 m-r-10"></i>
+                        
+                                {% endif %}
+                                {{ "{:,.0f}".format(entree_val).replace(",", " ") }}
+                            </h3>
+                        </div>
+                        <div class="col-3 text-end">
+                            <p class="m-b-0">
+                                {% if entree_neutre %}
+                                --
+                                {% else %}
+                                {{ entree_delta }}%
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="progress m-t-30" style="height: 7px;">
+                        <div class="progress-bar {{ 'bg-success' if entree_up else 'bg-danger' if entree_down else 'bg-secondary' }}"
+                            role="progressbar"
+                            style="width: {{ entree_delta|abs if not entree_neutre else 0 }}%;"
+                            aria-valuenow="{{ entree_delta }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [ Monthly  sales section ] end -->
+
+        <!-- [ year  sales section ] start -->
+        {% set sortie_val = stats['sortie'].val %}
+        {% set sortie_delta = stats['sortie'].delta %}
+        {% set sortie_up = sortie_delta > 0 %}
+        {% set sortie_down = sortie_delta < 0 %}
+        {% set sortie_neutre = sortie_delta == 0 %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="mb-4">Sorties</h6>
+                    <div class="row d-flex align-items-center">
+                        <div class="col-9">
+                            <h3 class="f-w-300 d-flex align-items-center m-b-0">
+                                {% if sortie_up %}
+                                <i class="feather icon-arrow-up text-success f-30 m-r-10"></i>
+                                {% elif sortie_down %}
+                                <i class="feather icon-arrow-down text-danger f-30 m-r-10"></i>
+                               
+                                {% endif %}
+                                {{ "{:,.0f}".format(sortie_val).replace(",", " ") }}
+                            </h3>
+                        </div>
+                        <div class="col-3 text-end">
+                            <p class="m-b-0">
+                                {% if sortie_neutre %}
+                                --
+                                {% else %}
+                                {{ sortie_delta }}%
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="progress m-t-30" style="height: 7px;">
+                        <div class="progress-bar {{ 'bg-success' if sortie_up else 'bg-danger' if sortie_down else 'bg-secondary' }}"
+                            role="progressbar"
+                            style="width: {{ sortie_delta|abs if not sortie_neutre else 0 }}%;"
+                            aria-valuenow="{{ sortie_delta }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ worldLow section ] start -->
+        <div class="col-xl-8 col-md-6">
+            <!-- <div class="card">
+                <div class="card-header">
+                    <h5>Users From United States</h5>
+                </div>
+                <div class="card-body">
+                    <div id="world-low" style="height:450px;"></div>
+                </div>
+            </div> -->
+            <div class="card">
+                <div class="card-header">
+                  <h5>Pie Chart</h5>
+                </div>
+                <div class="card-body text-center">
+                  <div id="pie-chart"  data-repartition='{{ repartition | tojson | safe }}' ></div>
+                </div>
+              </div>
+        </div>
+        <!-- [ worldLow section ] end -->
+
+        <!-- [ statistics year chart ] start -->
+        {% set benefice_val = stats['benefice'].val %}
+        {% set benefice_delta = stats['benefice'].delta %}
+        {% set benefice_up = benefice_delta > 0 %}
+        {% set benefice_down = benefice_delta < 0 %}
+        {% set benefice_neutre = benefice_delta == 0 %}
+        <div class="col-xl-4 col-md-6">
+            <div class="card bg-primary">
+                <div class="card-header border-0">
+                    <h5 class="text-white">Bénéfices (FCFA)</h5>
+                </div>
+                <div class="card-body" style="padding:0 25px;">
+                    <div class="earning-text mb-0">
+                        <h3 class="mb-2 text-white f-w-300">
+                            {{ "{:,.0f}".format(benefice_val).replace(",", " ") }}
+                            {% if benefice_up %}
+                                <i class="feather icon-arrow-up text-success f-30 m-r-10"></i>
+                                {% elif benefice_down %}
+                                <i class="feather icon-arrow-down text-danger f-30 m-r-10"></i>
+                                 
+                               
+                            {% endif %}  
+                            <span class="m-b-0">
+                                {% if benefice_neutre %}
+                                --
+                                {% else %}
+                                {{ benefice_delta }}%
+                                {% endif %}
+                            </span>                         
+                        </h3>
+                        <span class="text-uppercase text-white d-block">Evolution du bénéfice</span>
+                    </div>
+                    <div id="Widget-line-chart" class="WidgetlineChart2 ChartShadow" style="height:180px;" data-benefice='{{ benefice_mois | tojson }}'
+                    data-labels='{{ mois_labels | tojson }}'></div>
+                </div>
+            </div>
+
+            {% set nb_val = stats['nb'].val %}
+            {% set nb_delta = stats['nb'].delta %}
+            {% set nb_up = nb_delta > 0 %}
+            {% set nb_down = nb_delta < 0 %}
+            {% set nb_neutre = nb_delta == 0 %}
+            <div class="card">
+                
+                <div class="card-body border-bottom">
+                    <h3>Nombre d'opérations</h3>
+                    <div class="row d-flex align-items-center">
+                        <div class="col-auto">
+                            <i class="feather icon-repeat f-30 text-muted"></i>
+                        </div>
+                        <div class="col">
+                            <h3 class="f-w-300">{{ "{:,.0f}".format(nb_val).replace(",", " ") }}</h3>
+                            <span class="d-block text-uppercase">OPERATIONS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ statistics year chart ] end -->
+
+        <!-- [social-media section] start -->
+        <!-- <div class="col-md-12 col-xl-4">
+            <div class="card card-social">
+                <div class="card-body border-bottom">
+                    <div class="row align-items-center justify-content-center">
+                        <div class="col-auto">
+                            <i class="fab fa-facebook-f text-primary f-36"></i>
+                        </div>
+                        <div class="col text-end">
+                            <h3>12,281</h3>
+                            <h5 class="text-success mb-0">+7.2% <span class="text-muted">Total Likes</span></h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center justify-content-center card-active">
+                        <div class="col-6">
+                            <h6 class="text-center m-b-10"><span class="text-muted m-r-5">Target:</span>35,098</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-brand-color-1" role="progressbar" style="width:60%;height:6px;" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-center  m-b-10"><span class="text-muted m-r-5">Duration:</span>3,539</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-brand-color-2" role="progressbar" style="width:45%;height:6px;" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <div class="card card-social">
+                <div class="card-body border-bottom">
+                    <div class="row align-items-center justify-content-center">
+                        <div class="col-auto">
+                            <i class="fab fa-twitter text-primary f-36"></i>
+                        </div>
+                        <div class="col text-end">
+                            <h3>11,200</h3>
+                            <h5 class="text-info mb-0">+6.2% <span class="text-muted">Total Likes</span></h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center justify-content-center card-active">
+                        <div class="col-6">
+                            <h6 class="text-center m-b-10"><span class="text-muted m-r-5">Target:</span>34,185</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width:40%;height:6px;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-center  m-b-10"><span class="text-muted m-r-5">Duration:</span>4,567</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width:70%;height:6px;" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <div class="card card-social">
+                <div class="card-body border-bottom">
+                    <div class="row align-items-center justify-content-center">
+                        <div class="col-auto">
+                            <i class="fab fa-google-plus-g text-danger f-36"></i>
+                        </div>
+                        <div class="col text-end">
+                            <h3>10,500</h3>
+                            <h5 class="text-primary mb-0">+5.9% <span class="text-muted">Total Likes</span></h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center justify-content-center card-active">
+                        <div class="col-6">
+                            <h6 class="text-center m-b-10"><span class="text-muted m-r-5">Target:</span>25,998</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-brand-color-1" role="progressbar" style="width:80%;height:6px;" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-center  m-b-10"><span class="text-muted m-r-5">Duration:</span>7,753</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-brand-color-2" role="progressbar" style="width:50%;height:6px;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+        <!-- [social-media section] end -->
+
+        <!-- [ rating list ] starts-->
+        <!-- [ Classement des pôles d'activités ] starts -->
+<div class="col-xl-6 col-md-6">
+    <div class="card user-list">
+      <div class="card-header">
+        <h5>Meilleurs Pôles d'activités</h5>
+      </div>
+      <div class="card-body">
+        {% set max_montant = best_poles[0][1] if best_poles else 1 %}
+        {% for pole, montant in best_poles %}
+        <div class="row align-items-center">
+            <div class="col-7">
+            <h6 class="mb-1">{{ pole.nom }}</h6>
+            </div>
+            <div class="col-5 text-end">
+            <span>{{ "{:,.0f}".format(montant).replace(",", " ") }} FCFA</span>
+            </div>
+            <div class="col-12">
+            <div class="progress m-t-10 m-b-20" style="height: 6px;">
+                <div class="progress-bar bg-brand-color-1"
+                    role="progressbar"
+                    style="width: {{ (montant / max_montant) * 100 if max_montant else 0 }}%;"
+                    aria-valuenow="{{ montant }}"
+                    aria-valuemin="0"
+                    aria-valuemax="{{ max_montant }}"></div>
+            </div>
+            </div>
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+  </div>
+  <!-- [ Classement des pôles d'activités ] ends -->
+  
+        <!-- [ rating list ] end -->
+        <div class="col-xl-6 col-md-6">
+            <div class="card Recent-Users">
+              <div class="card-header">
+                <h5>Vos 5 meilleurs Clients</h5>
+              </div>
+              <div class="card-body px-0 py-3">
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <tbody>
+                      {% if top_clients %}
+                      {% for client, stats in top_clients %}
+                      <tr class="unread">
+                        <td class="text-center">
+                          <span class="badge bg-primary rounded-circle text-white" style="width: 32px; height: 32px; line-height: 24px; font-size: 16px;">{{ loop.index }}</span>
+                        </td>
+                        <td>
+                          <h6 class="mb-1">{{ client or "Client inconnu" }}</h6>
+                          <small class="text-muted">{{ stats['nb'] }} opération{{ 's' if stats['nb'] > 1 else '' }}</small>
+                        </td>
+                        <td class="text-end">
+                          <h6 class="text-success mb-0">{{ "{:,.0f}".format(stats['montant'])|replace(",", " ") }} FCFA</h6>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                      
+                      {% else %}
+                        <tr><td colspan="3" class="text-center text-muted">Aucun client trouvé pour cette période</td></tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          
+        <!-- [ Recent Users ] start -->
+        <div class="col-xl-8 col-md-6">
+            <div class="card Recent-Users">
+                <div class="card-header">
+                    <h5>Recent Users</h5>
+                </div>
+                <div class="card-body px-0 py-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <tbody>
+                                <tr class="unread">
+                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-1.jpg') }}" alt="activity-user"></td>
+                                    <td>
+                                        <h6 class="mb-1">Isabella Christensen</h6>
+                                        <p class="m-0">Lorem Ipsum is simply dummy</p>
+                                    </td>
+                                    <td>
+                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>11 MAY 12:56</h6>
+                                    </td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                </tr>
+                                <tr class="unread">
+                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-2.jpg') }}" alt="activity-user"></td>
+                                    <td>
+                                        <h6 class="mb-1">Mathilde Andersen</h6>
+                                        <p class="m-0">Lorem Ipsum is simply</p>
+                                    </td>
+                                    <td>
+                                        <h6 class="text-muted"><i class="fas fa-circle text-danger f-10 m-r-15"></i>11 MAY 10:35</h6>
+                                    </td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                </tr>
+                                <tr class="unread">
+                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-3.jpg') }}" alt="activity-user"></td>
+                                    <td>
+                                        <h6 class="mb-1">Karla Sorensen</h6>
+                                        <p class="m-0">Lorem Ipsum is simply dummy</p>
+                                    </td>
+                                    <td>
+                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>9 MAY 17:38</h6>
+                                    </td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                </tr>
+                                <tr class="unread">
+                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-1.jpg') }}" alt="activity-user"></td>
+                                    <td>
+                                        <h6 class="mb-1">Ida Jorgensen</h6>
+                                        <p class="m-0">Lorem Ipsum is simply</p>
+                                    </td>
+                                    <td>
+                                        <h6 class="text-muted f-w-300"><i class="fas fa-circle text-danger f-10 m-r-15"></i>19 MAY 12:56</h6>
+                                    </td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                </tr>
+                                <tr class="unread">
+                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-2.jpg') }}" alt="activity-user"></td>
+                                    <td>
+                                        <h6 class="mb-1">Albert Andersen</h6>
+                                        <p class="m-0">Lorem Ipsum is</p>
+                                    </td>
+                                    <td>
+                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>21 July 12:56</h6>
+                                    </td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ Recent Users ] end -->
+    </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+
+{% endblock content %}
+
+{% block extra_js %}
+
+<script src="{{ url_for('static', filename='assets/js/plugins/apexcharts.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/plugins/jsvectormap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/plugins/world.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/pages/dashboard-default.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const periodeSelect = document.getElementById("periode");
+      const anneeSelect = document.getElementById("annee");
+      const moisSelect = document.getElementById("mois");
+      const jourSelect = document.getElementById("jour");
+      const filtresPerso = document.querySelectorAll(".filtre-personnalise");
+    
+      function toggleFiltres() {
+        if (periodeSelect.value === "personnalise") {
+          filtresPerso.forEach(f => f.classList.remove("d-none"));
+        } else {
+          filtresPerso.forEach(f => f.classList.add("d-none"));
+        }
+      }
+    
+      periodeSelect.addEventListener("change", toggleFiltres);
+      // Affiche les filtres si on est en mode personnalisé
+        if (periodeSelect.value === "personnalise") {
+        filtresPerso.forEach(f => f.classList.remove("d-none"));
+        }
+
+    
+      anneeSelect.addEventListener("change", function () {
+        const year = anneeSelect.value;
+        moisSelect.innerHTML = '<option value="">-- Choisir --</option>';
+        jourSelect.innerHTML = '<option value="">-- Choisir --</option>';
+        moisSelect.disabled = true;
+        jourSelect.disabled = true;
+    
+        if (year) {
+          fetch(`/mois_disponibles/${year}`)
+            .then(res => res.json())
+            .then(data => {
+              data.forEach(mois => {
+                const option = document.createElement("option");
+                option.value = mois;
+                option.text = mois.toString().padStart(2, '0');
+                moisSelect.appendChild(option);
+              });
+              moisSelect.disabled = false;
+            });
+        }
+      });
+    
+      moisSelect.addEventListener("change", function () {
+        const year = anneeSelect.value;
+        const month = moisSelect.value;
+        jourSelect.innerHTML = '<option value="">-- Choisir --</option>';
+        jourSelect.disabled = true;
+    
+        if (year && month) {
+          fetch(`/jours_disponibles/${year}/${month}`)
+            .then(res => res.json())
+            .then(data => {
+              data.forEach(jour => {
+                const option = document.createElement("option");
+                option.value = jour;
+                option.text = jour.toString().padStart(2, '0');
+                jourSelect.appendChild(option);
+              });
+              jourSelect.disabled = false;
+            });
+        }
+      });
+    });
+    </script>
+    <!-- <script>
+       document.addEventListener("DOMContentLoaded", function() {
+         var repartition = JSON.parse('{{ repartition | tojson | safe }}');
+         
+         var labels = Object.keys(repartition);
+         var data = Object.values(repartition);
+     
+         var pieOptions = {
+           chart: {
+             type: 'pie',
+             height: 350
+           },
+           labels: labels,
+           series: data,
+           colors: ['#28a745', '#dc3545'],  // vert pour entrées, rouge pour sorties
+           legend: {
+             position: 'bottom'
+           },
+           tooltip: {
+             y: {
+               formatter: function (val) {
+                 return val.toLocaleString('fr-FR') + " FCFA";
+               }
+             }
+           }
+         };
+     
+         var pieChart = new ApexCharts(document.querySelector("#pie-chart"), pieOptions);
+         pieChart.render();
+       });
+     </script> -->
+    
+    <script>
+        // var options = {
+        //     chart: {
+        //         type: 'line',
+        //         height: 210,
+        //         toolbar: { show: false },
+        //         zoom: { enabled: false }
+        //     },
+        //     dataLabels: { enabled: false },
+        //     colors: ["#fff"],
+        //     fill: { type: 'solid' },
+        //     series: [{
+        //         name: "Bénéfice mensuel",
+        //         data: {{ benefice_mois | tojson }}
+        //     }],
+        //     xaxis: {
+        //         categories: {{ mois_labels | tojson }},
+        //         axisBorder: { show: false },
+        //         axisTicks: { show: false },
+        //         labels: { style: { colors: "#fff" } }
+        //     },
+        //     yaxis: {
+        //         axisBorder: { show: false },
+        //         axisTicks: { show: false },
+        //         labels: { show: false }
+        //     },
+        //     grid: {
+        //         padding: { bottom: 0, left: 10 },
+        //         xaxis: { lines: { show: false } },
+        //         yaxis: { lines: { show: false } }
+        //     },
+        //     markers: {
+        //         size: 5,
+        //         colors: '#fff',
+        //         opacity: 0.9,
+        //         strokeWidth: 2,
+        //         hover: { size: 7 }
+        //     },
+        //     tooltip: {
+        //         x: { show: true },
+        //         y: {
+        //             title: { formatter: () => 'Bénéfice :' }
+        //         }
+        //     }
+        // };
+      
+        // var chart = new ApexCharts(document.querySelector("#Widget-line-chart"), options);
+        // chart.render();
+      </script>
+      
+      
+{% endblock extra_js %}

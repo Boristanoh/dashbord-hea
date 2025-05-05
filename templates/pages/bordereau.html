@@ -1,0 +1,442 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+
+  <!-- [ Main Content ] start -->
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Bordereau</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Other</a></li>
+                <li class="breadcrumb-item" aria-current="page">Bordereau</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <!-- [ sample-page ] start -->
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-header">
+              <h5>Bordereau</h5>
+            </div>
+            <div class="card-body">
+              {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            <!-- MODAL PDF -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl" style="max-width: 90%;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Aperçu du Bordereau</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" style="height: 80vh;">
+        <iframe id="pdfFrame" style="width:100%; height:100%; border:none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+            
+              <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-4">
+                  <h4 class="text-center fw-bold">BORDEREAU</h4>
+                </div>
+              
+                <div class="row">
+                  <div class="col-md-6">
+                    <label><strong>Nom de l’Entreprise</strong></label>
+                    {{ form.nom_entreprise(class="form-control", required=True, readonly=bordereau_sauvegarde) }}
+                    
+                    <label class="mt-2"><strong>Adresse Courriel</strong></label>
+                    {{ form.adresse_entreprise(class="form-control", required=True, readonly=bordereau_sauvegarde) }}
+                    
+                    <label class="mt-2"><strong>Point de contact</strong></label>
+                    {{ form.entreprise_contact(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                  
+                  <!-- {{ form.adresse_entreprise(class_="form-control") }}
+{{ form.client_adresse(class_="form-control") }} -->
+
+                  <div class="col-md-6">
+                    <label><strong>Date</strong></label>
+                    {{ form.date(class="form-control", readonly=bordereau_sauvegarde) }}
+              
+                    <label class="mt-2"><strong>N° Facture</strong></label>
+                    {{ form.numero_facture(class="form-control", readonly=bordereau_sauvegarde) }}
+              
+                    <label class="mt-2"><strong>N° Client</strong></label>
+                    {{ form.numero_client(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                </div>
+              
+                <hr class="my-4">
+                <h6 class="fw-bold text-uppercase text-primary">Facturer à</h6>
+              
+                <div class="row">
+                  <div class="col-md-6">
+                    <label><strong>Nom de l’Entreprise</strong></label>
+                    {{ form.client_nom(class="form-control", readonly=bordereau_sauvegarde) }}
+              
+                    
+              
+                    <label class="mt-2"><strong>Point de contact</strong></label>
+                    {{ form.client_contact(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+              
+                  <div class="col-md-6">
+                    <label class="mt-2"><strong>Adresse Courriel</strong></label>
+                    {{ form.client_adresse(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                </div>
+              
+                <hr class="my-4">
+                <h6 class="fw-bold text-uppercase text-primary">Détails d’expédition</h6>
+              
+                <div class="row">
+                  <div class="col-md-4">
+                    <label><strong>P.O. No</strong></label>
+                    {{ form.po_no(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                  <div class="col-md-4">
+                    <label><strong>Date d’expédition</strong></label>
+                    {{ form.date_expedition(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                  <div class="col-md-4">
+                    <label><strong>Expédier via</strong></label>
+                    {{ form.expedier_via(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label><strong>Vendeur</strong></label>
+                    {{ form.vendeur(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                  <div class="col-md-6 mt-3">
+                    <label><strong>FOB</strong></label>
+                    {{ form.fob(class="form-control", readonly=bordereau_sauvegarde) }}
+                  </div>
+                </div>
+                <!-- #region -->
+                <div class="card mt-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Articles</h5>
+                    <button type="button" class="btn btn-sm btn-success" id="add-article" {% if bordereau_sauvegarde %}disabled{% endif %}>Ajouter un article</button>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                    <table class="table table-bordered" id="articles-table">
+                      <thead>
+                        <tr>
+                          <th>Numéro d'article</th>
+                          <th>Description</th>
+                          <th>Quantité</th>
+                          <th>Prix unitaire</th>
+                          <th>Total</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for article_form in form.articles %}
+                        <tr>
+                          <td>{{ article_form.numero_article(class_="form-control", readonly=bordereau_sauvegarde) }}</td>
+                          <td>{{ article_form.descriptions(class_="form-control", readonly=bordereau_sauvegarde) }}</td>
+                          <td>{{ article_form.quantite(class_="form-control quantity", readonly=bordereau_sauvegarde) }}</td>
+                          <td>{{ article_form.prix_unitaire(class_="form-control unit-price", readonly=bordereau_sauvegarde) }}</td>
+                          <td class="line-total text-end">0</td>
+                          <td><button type="button" class="btn btn-sm btn-danger remove-article" {% if bordereau_sauvegarde %}disabled{% endif %} >Supprimer</button></td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                    <div class="text-end mt-3">
+                      <h5>Total général : <span id="grand-total">0</span></h5>
+                    </div>
+                    
+                  </div>
+                </div>
+                <div>
+                  <div class="btn-group">
+                    <a href="#" class="btn btn-sm btn-outline-secondary" id="voir-pdf-btn" title="Voir PDF">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    
+                    {% if mon_bordereau %}
+                      <a href="{{ url_for('home_blueprint.bordereau_pdf', bordereau_id=mon_bordereau.id, mode='attachment' )}}"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Télécharger PDF">
+                        <i class="fas fa-download"></i>
+                      </a>
+                    {% else %}
+                      <button class="btn btn-sm btn-outline-secondary" title="Télécharger PDF" disabled>
+                        <i class="fas fa-download"></i>
+                      </button>
+                    {% endif %}
+
+                 
+                    <a href="#" class="btn btn-sm btn-outline-primary" title="Envoyer par email" data-bs-toggle="modal" data-bs-target="#emailModal">
+                      <i class="fas fa-paper-plane"></i>
+                    </a>                    
+                    <button type="reset" class="btn btn-sm btn-outline-danger" title="Tout effacer">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                    
+                  </div>
+                
+                  <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-success" {% if bordereau_sauvegarde %}disabled{% endif %}>Enregistrer le Bordereau</button>
+                  </div>
+                </div>
+              </form>
+              
+            </div>
+          </div>
+        </div>
+        <!-- [ sample-page ] end -->
+      </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+
+
+
+  <!-- Template caché pour une nouvelle ligne d'article -->
+<table style="display: none;">
+  <tbody>
+    <tr id="article-template">
+      <td><input type="text" name="articles-__index__-numero_article" class="form-control" /></td>
+      <td><input type="text" name="articles-__index__-descriptions" class="form-control" /></td>
+      <td><input type="number" name="articles-__index__-quantite" class="form-control quantity" /></td>
+      <td><input type="number" step="0.01" name="articles-__index__-prix_unitaire" class="form-control unit-price" /></td>
+      <td class="line-total text-end">0</td>
+      <td><button type="button" class="btn btn-sm btn-danger remove-article"  {% if bordereau_sauvegarde %}disabled{% endif %}>Supprimer</button></td>
+    </tr>
+    
+  </tbody>
+</table>
+
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="emailForm" method="POST">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="emailModalLabel">Envoyer le bordereau par e-mail</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <p>Le bordereau sera sauvegardé avant l'envoi si ce n’est pas encore fait.</p>
+          <div class="mb-3">
+            <label for="email" class="form-label">Adresse e-mail du destinataire</label>
+            <input type="email" class="form-control" id="input-email" name="email" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Envoyer</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+  const emailForm = document.getElementById("emailForm");
+
+  if (emailForm) {
+    emailForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      const input = document.getElementById("input-email");
+      if (!input) {
+        alert("Champ e-mail introuvable !");
+        return;
+      }
+
+      const email = input.value;
+
+      fetch("/bordereau/envoyer-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ destinataire: email })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          const modal = bootstrap.Modal.getInstance(document.getElementById('emailModal'));
+          modal.hide();
+        })
+        .catch(err => {
+          alert("Erreur lors de l'envoi.");
+          console.error(err);
+        });
+    });
+  }
+});
+
+  </script>
+  
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    let articleIndex = {{ form.articles|length if form.articles else 0 }};
+    const addArticleBtn = document.getElementById('add-article');
+    const articlesTableBody = document.querySelector('#articles-table tbody');
+    const articleTemplate = document.getElementById('article-template').outerHTML;
+
+    addArticleBtn.addEventListener('click', function () {
+      const newRowHtml = articleTemplate.replace(/__index__/g, articleIndex);
+      articlesTableBody.insertAdjacentHTML('beforeend', newRowHtml);
+      articleIndex++;
+    });
+
+    articlesTableBody.addEventListener('click', function (e) {
+  if (e.target && e.target.classList.contains('remove-article')) {
+    const rows = articlesTableBody.querySelectorAll('tr');
+    if (rows.length <= 1) {
+      alert("Impossible de supprimer. Au moins un article est requis.");
+      return;
+    }
+
+    e.target.closest('tr').remove();
+    updateTotals();  // recalcul du total après suppression
+  }
+});
+
+  });
+</script>
+
+<script>
+  function updateTotals() {
+    let grandTotal = 0;
+    document.querySelectorAll('#articles-table tbody tr').forEach(row => {
+      const qty = parseFloat(row.querySelector('.quantity')?.value) || 0;
+      const price = parseFloat(row.querySelector('.unit-price')?.value) || 0;
+      const total = qty * price;
+      row.querySelector('.line-total').textContent = total.toFixed(2);
+      grandTotal += total;
+    });
+    document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
+  }
+
+  document.addEventListener('input', function (e) {
+    if (e.target.classList.contains('quantity') || e.target.classList.contains('unit-price')) {
+      updateTotals();
+    }
+  });
+  
+
+  // Au chargement
+  updateTotals();
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const resetButton = document.querySelector('button[type="reset"]');
+
+    resetButton.addEventListener('click', function () {
+      // Réactiver tous les champs input, textarea, select
+      const fields = document.querySelectorAll('input[readonly], input[disabled], textarea[readonly], textarea[disabled], select[disabled]');
+      fields.forEach(field => {
+        field.removeAttribute('readonly');
+        field.removeAttribute('disabled');
+      });
+
+      // Réactiver le bouton "Enregistrer"
+      const saveButton = document.getElementById('save-button');
+      if (saveButton) {
+        saveButton.removeAttribute('disabled');
+      }
+    });
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const voirBtn = document.querySelector('#voir-pdf-btn');
+    if (!voirBtn) return;
+  
+    voirBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+  
+      const form = document.querySelector("form");
+  
+      // 🔹 Réactiver temporairement les champs désactivés pour qu'ils soient inclus dans FormData
+      const disabledFields = form.querySelectorAll('[disabled]');
+      disabledFields.forEach(field => field.removeAttribute('disabled'));
+  
+      // 🔹 Créer le FormData à partir du formulaire complet
+      const formData = new FormData(form);
+  
+      // 🔹 Renvoyer les champs à l’état désactivé après collecte
+      disabledFields.forEach(field => field.setAttribute('disabled', 'disabled'));
+  
+      // 🔎 Debug : Affiche les données envoyées
+      console.log("📤 Données envoyées :");
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ": " + pair[1]);
+      }
+  
+      // 🔹 Envoi vers le backend Flask
+      fetch("{{ url_for('home_blueprint.apercu_bordereau_pdf') }}", {
+        method: "POST",
+        body: formData
+      })
+        .then(res => res.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          document.getElementById("pdfFrame").src = url;
+          const modalEl = document.getElementById('pdfModal');
+          modalEl.setAttribute('aria-hidden', 'false');  // Correction ici
+          const modal = new bootstrap.Modal(modalEl);
+          modal.show();
+
+        })
+        .catch(err => {
+          alert("Erreur lors de la génération du PDF.");
+          console.error(err);
+        });
+    });
+  });
+  </script>
+  
+  
+<script>
+  
+  
+
+  document.querySelector('[title="Tout effacer"]').addEventListener("click", function (e) {
+  e.preventDefault();
+  fetch("{{ url_for('home_blueprint.reset_bordereau') }}", {
+    method: "POST"
+  }).then(() => {
+    window.location.href = "{{ url_for('home_blueprint.bordereau') }}";
+  });
+});
+
+</script>
+
+  
+
+{% endblock content %}

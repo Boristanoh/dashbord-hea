@@ -1,0 +1,280 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+
+  <!-- [ Main Content ] start -->
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Enregistrement Bordereau</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Other</a></li>
+                <li class="breadcrumb-item" aria-current="page">Enregistrement Bordereau</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <!-- [ sample-page ] start -->
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-header">
+              <h5>Enregistrement Bordereau</h5>
+            </div>
+            <div class="card-body">
+              {% if request.args %}
+                <div class="alert alert-info">
+                  Filtres appliqués :
+                  {% if annee %} <strong>Année :</strong> {{ annee }} {% endif %}
+                  {% if mois %} <strong>Mois :</strong> {{ mois }} {% endif %}
+                  {% if jour %} <strong>Jour :</strong> {{ jour }} {% endif %}
+                </div>
+              {% endif %}
+
+              <form method="get" class="row g-2 mb-3">
+                <div class="col-md-3">
+                  <label for="annee">Année</label>
+                  <select name="annee" id="annee" class="form-select">
+                    <option value="">-- Toutes --</option>
+                    {% for a in annees %}
+                      <option value="{{ a }}" {% if annee == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              
+                <div class="col-md-3">
+                  <label for="mois">Mois</label>
+                  <select name="mois" id="mois" class="form-select">
+                    <option value="">-- Tous --</option>
+                    {% set mois_fr = [
+                      (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+                      (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+                      (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+                    ] %}
+                    {% for m, nom in mois_fr %}
+                      <option value="{{ m }}" {% if mois == m %}selected{% endif %}>{{ nom }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                
+              
+                <div class="col-md-3">
+                  <label for="jour">Jour</label>
+                  <select name="jour" id="jour" class="form-select">
+                    <option value="">-- Tous --</option>
+                    {# Génération dynamique des jours selon JS #}
+                    {% if mois and annee %}
+                      {% set nb_jours = (namespace(value=31)) %}
+                      {% set _ = nb_jours.update(value=(range(1, (loop.index0 == 1 and 29) or 31 + 1))) %}
+                    {% endif %}
+                    {% for j in range(1, 32) %}
+                      <option value="{{ j }}" {% if jour == j %}selected{% endif %}>{{ "%02d" % j }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              
+                <div class="col-md-3 align-self-end d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">Filtrer</button>
+                  <a href="{{ url_for('home_blueprint.liste_bordereaux') }}" class="btn btn-secondary">Réinitialiser</a>
+                </div>
+              </form>
+              
+              
+              <div class=" table-responsive">
+                <table id="bordereauxTable" class="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Heure</th>
+                      <th>Numéro</th>
+                      <th>Entreprise</th>
+                      <th>Client</th>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                          <th>Enregsitré par</th>
+                      {% endif %}
+                      <th>PDF</th>
+                    </tr>
+                    <tr class="filters">
+                      <th></th> <!-- Numérotation -->
+                      <th><input type="text" class="form-control form-control-sm" placeholder="Date"></th>
+                      <th><input type="text" class="form-control form-control-sm" placeholder="Heure"></th>
+                      <th><input type="text" class="form-control form-control-sm" placeholder="N°"></th>
+                      <th><input type="text" class="form-control form-control-sm" placeholder="Entreprise"></th>
+                      <th><input type="text" class="form-control form-control-sm" placeholder="Client"></th>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Par"></th>
+                      {% endif %}
+                      <th></th> <!-- Pas de filtre sur le bouton PDF -->
+                    </tr>
+                  </thead>
+                  
+                  <tbody>
+                    {% for b in bordereaux %}
+                    <tr>
+                      <td></td>
+                      <td>{{ b.date_sauvegarde.strftime('%d/%m/%Y') }}</td>
+                      <td>{{ b.date_sauvegarde.strftime('%H:%M') }}</td>
+                      <td>{{ b.numero_facture }}</td>
+                      <td>{{ b.nom_entreprise }}</td>
+                      <td>{{ b.client_nom }}</td>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                            <td>{{ b.utilisateur.username }}</td>
+                        {% endif %}
+                      <td>
+                        
+                        <div class="btn-group" role="group" aria-label="PDF actions">
+                          <a href="{{ url_for('home_blueprint.bordereau_pdf', bordereau_id=b.id, mode='inline') }}" 
+                             target="_blank" 
+                             class="btn btn-sm btn-outline-primary" 
+                             title="Voir PDF">
+                            <i class="fas fa-eye"></i>
+                          </a>  
+                        
+                          <a href="{{ url_for('home_blueprint.bordereau_pdf', bordereau_id=b.id, mode='attachment') }}" 
+                             class="btn btn-sm btn-outline-secondary" 
+                             title="Télécharger PDF">
+                            <i class="fas fa-download"></i>
+                          </a>
+                        </div>
+                                            
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                  <!-- <tfoot>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Heure</th>
+                      <th>Numéro</th>
+                      <th>Entreprise</th>
+                      <th>Client</th>
+                      {% if current_user.role.name in ['admin', 'superadmin'] %}
+                          <th>par</th>
+                      {% endif %}
+                      <th>PDF</th>
+                    </tr>
+                  </tfoot> -->
+                </table>
+
+              </div>
+              
+              
+              <!-- JS de DataTables -->
+              <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
+              <!-- jQuery et DataTables JS -->
+              <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+              <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+
+              <!-- <script>
+                $(document).ready(function() {
+                  $('#bordereauxTable').DataTable();
+                });
+              </script> -->
+              <script>
+                $(document).ready(function () {
+                    
+              
+                    var table = $('.table').DataTable({
+                        language: {
+                            url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json'
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tout afficher"]],
+                        columnDefs: [{
+                            targets: 0, // Colonne numérotation
+                            searchable: false,
+                            orderable: false,
+                        }],
+                        drawCallback: function (settings) {
+                            let api = this.api();
+                            api.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                                cell.innerHTML = i + 1;
+                            });
+                        },
+                        // initComplete: function () {
+                        //   this.api().columns().every(function (index) {
+                        //     if (index === 0 || index === 7) return;  // on ignore l’index et les boutons
+
+                        //     var column = this;
+                        //     var input = document.createElement("input");
+                        //     input.placeholder = "Filtrer";
+                        //     $(input).appendTo($(column.footer()).empty())
+                        //             .on('keyup change', function () {
+                        //               column.search($(this).val()).draw();
+                        //             });
+                        //   });
+                        // }
+                        initComplete: function () {
+  this.api().columns().every(function () {
+    var that = this;
+    $('input', this.header()).on('keyup change clear', function () {
+      if (that.search() !== this.value) {
+        that.search(this.value).draw();
+      }
+    });
+  });
+}
+
+                    });
+              
+                 
+  
+                });
+              </script>
+              
+            </div>
+          </div>
+        </div>
+        <!-- [ sample-page ] end -->
+      </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+
+  <script>
+    function updateDays() {
+    const annee = document.getElementById('annee').value;
+    const mois = document.getElementById('mois').value;
+    const jourSelect = document.getElementById('jour');
+    const selectedJour = {{ request.args.get('jour', 'null') }};  // Valeur actuelle
+
+    jourSelect.innerHTML = '<option value="">-- Tous --</option>';
+
+    if (!mois) return;
+
+    const nbJours = new Date(annee || 2024, mois, 0).getDate();
+
+    for (let j = 1; j <= nbJours; j++) {
+      const option = document.createElement('option');
+      option.value = j;
+      option.text = j.toString().padStart(2, '0');
+      if (j === selectedJour) option.selected = true;
+      jourSelect.appendChild(option);
+    }
+  }
+
+  
+    document.getElementById('annee').addEventListener('change', updateDays);
+    document.getElementById('mois').addEventListener('change', updateDays);
+  
+    // Initialisation au chargement si valeurs déjà présentes
+    document.addEventListener('DOMContentLoaded', updateDays);
+  </script>
+  
+
+{% endblock content %}

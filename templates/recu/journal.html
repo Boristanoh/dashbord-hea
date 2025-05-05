@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Reçu d'Opération</title>
+  <style>
+    body {
+      font-family: 'DejaVu Sans', sans-serif;
+      font-size: 12px;
+      margin: 30px;
+      color: #333;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header img {
+      height: 50px;
+    }
+
+    .header h2 {
+      margin: 10px 0 5px;
+    }
+
+    .divider {
+      border-bottom: 1px solid #aaa;
+      margin: 10px 0 20px;
+    }
+
+    .section {
+      margin-bottom: 10px;
+    }
+
+    .section h4 {
+      margin-bottom: 8px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 2px;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 4px 8px;
+      vertical-align: top;
+    }
+
+    .label {
+      font-weight: bold;
+      width: 35%;
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 11px;
+      text-align: center;
+      color: #777;
+    }
+
+    .signature {
+      margin-top: 40px;
+      text-align: right;
+    }
+
+    .signature p {
+      margin: 0;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Entreprise">
+    <h2>REÇU D’OPÉRATION</h2>
+    <div class="divider"></div>
+  </div>
+
+  <div class="section">
+    <table>
+      <tr><td class="label">Date de l’opération :</td><td>{{ operation.date_operation.strftime('%d/%m/%Y') }}</td></tr>
+      <tr><td class="label">N° de pièce :</td><td>{{ operation.numero_piece }}</td></tr>
+      <tr><td class="label">Pôle d’activité :</td><td>{{ operation.pole_activite.nom }}</td></tr>
+      <tr><td class="label">Type d’opération :</td><td>{{ operation.type_operation }}</td></tr>
+      <tr><td class="label">Mode de paiement :</td><td>{{ operation.mode_paiement }}</td></tr>
+      <tr><td class="label">Catégorie :</td><td>{{ operation.categorie.code }} - {{ operation.categorie.libelle }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h4>Montants</h4>
+    <table>
+      <tr><td class="label">Montant :</td><td>{{ operation.montant }} {{ operation.devise.code }}</td></tr>
+      <tr><td class="label">Montant en FCFA :</td><td>{{ operation.montant_fcfa }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h4>Comptabilité</h4>
+    <table>
+      <tr><td class="label">Compte comptable :</td><td>{{ operation.compte_comptable.numero }} - {{ operation.compte_comptable.libelle }}</td></tr>
+      <tr><td class="label">Compte client :</td><td>{{ operation.code_client or 'N/A' }}</td></tr>
+      <tr><td class="label">Compte fournisseur :</td><td>{{ operation.code_fournisseur or 'N/A' }}</td></tr>
+      <tr><td class="label">N° Facture :</td><td>{{ operation.numero_facture or 'N/A' }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h4>Désignation</h4>
+    <p>{{ operation.designation }}</p>
+  </div>
+
+  <div class="section">
+    <table>
+      <tr><td class="label">Enregistré le :</td><td>{{ operation.created_at.strftime('%d/%m/%Y à %H:%M') }}</td></tr>
+      <tr><td class="label">Enregistré par :</td><td>{{ operation.utilisateur.username }}</td></tr>
+    </table>
+  </div>
+
+  <div class="signature">
+    <p><strong>Signature de l'opérateur</strong></p>
+    <p>______________________________</p>
+  </div>
+
+  <div class="footer">
+    Reçu généré automatiquement par le système comptable.
+  </div>
+
+</body>
+</html>

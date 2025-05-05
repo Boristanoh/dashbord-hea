@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bordereau</title>
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+        h2 { text-align: center; margin-bottom: 10px; }
+        .section { margin-bottom: 15px; }
+        .label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid #444; }
+        th, td { padding: 5px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<h2>Bordereau d’Expédition</h2>
+
+<div class="section">
+    <div><span class="label">Entreprise :</span> {{ form.get('nom_entreprise', '') }}</div>
+    <div><span class="label">Adresse :</span> {{ form.get('adresse_entreprise', '') }}</div>
+    <div><span class="label">N° Facture :</span> {{ form.get('numero_facture', '') }}</div>
+    <div><span class="label">N° Client :</span> {{ form.get('numero_client', '') }}</div>
+    <div><span class="label">Date :</span> {{ form.get('date', '') }}</div>
+</div>
+
+<div class="section">
+    <div><span class="label">Facturer à :</span> {{ form.get('client_nom', '') }}</div>
+    <div><span class="label">Adresse :</span> {{ form.get('client_adresse', '') }}</div>
+    <div><span class="label">Email :</span> {{ form.get('client_email', '') }}</div>
+    <div><span class="label">Contact :</span> {{ form.get('client_contact', '') }}</div>
+</div>
+
+<div class="section">
+    <div><span class="label">P.O No :</span> {{ form.get('po_no', '') }}</div>
+    <div><span class="label">Date Expédition :</span> {{ form.get('date_expedition', '') }}</div>
+    <div><span class="label">Expédié via :</span> {{ form.get('expedier_via', '') }}</div>
+    <div><span class="label">Vendeur :</span> {{ form.get('vendeur', '') }}</div>
+    <div><span class="label">FOB :</span> {{ form.get('fob', '') }}</div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Article</th>
+            <th>Description</th>
+            <th>Quantité</th>
+            <th>Prix Unitaire</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in range(0, 50) %}
+            {% set numero = form.get('articles-' ~ i ~ '-numero_article') %}
+            {% if numero %}
+                <tr>
+                    <td>{{ numero }}</td>
+                    <td>{{ form.get('articles-' ~ i ~ '-descriptions', '') }}</td>
+                    <td>{{ form.get('articles-' ~ i ~ '-quantite', '') }}</td>
+                    <td>{{ form.get('articles-' ~ i ~ '-prix_unitaire', '') }}</td>
+                    <td>
+                        {% set q = form.get('articles-' ~ i ~ '-quantite', 0)|float %}
+                        {% set p = form.get('articles-' ~ i ~ '-prix_unitaire', 0)|float %}
+                        {{ (q * p)|round(2) }}
+                    </td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>
