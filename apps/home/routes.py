@@ -34,6 +34,10 @@ from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 from collections import defaultdict
 
+@blueprint.route('/admin-page')
+@login_required
+def admin_custom():
+    return render_template('pages/admin_page.html')
 
 
 @blueprint.route('/')

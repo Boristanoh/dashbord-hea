@@ -20,9 +20,9 @@ class Config(object):
     MAIL_PORT = 587
     MAIL_USE_TLS = True
     MAIL_USE_SSL = False
-    MAIL_USERNAME = 'ripopo225@gmail.com'
-    MAIL_PASSWORD = 'T14036949y'
-    MAIL_DEFAULT_SENDER = ('Votre Nom', 'ripopo225@gmail.com')
+    MAIL_USERNAME = 'acpb.inphb@gmail.com'
+    MAIL_PASSWORD = 'yejv wyji rmfx gvug'
+    MAIL_DEFAULT_SENDER = ('HEA', 'acpb.inphb@gmail.com')
     
     USERS_ROLES  = { 'ADMIN'  :1 , 'USER'      : 2 }
     USERS_STATUS = { 'ACTIVE' :1 , 'SUSPENDED' : 2 }

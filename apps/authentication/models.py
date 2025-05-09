@@ -8,6 +8,7 @@ from flask_login import UserMixin
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 
+
 from apps import db, login_manager
 from apps.authentication.util import hash_pass
 from werkzeug.security import generate_password_hash, check_password_hash

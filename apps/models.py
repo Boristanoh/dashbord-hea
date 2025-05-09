@@ -7,6 +7,8 @@ from apps import db
 from sqlalchemy.exc import SQLAlchemyError
 from apps.exceptions.exception import InvalidUsage
 from datetime import datetime
+from sqlalchemy.ext.hybrid import hybrid_property
+
 
 class Product(db.Model):
 
@@ -58,7 +60,7 @@ class PoleActivite(db.Model):
     _nom = db.Column('nom', db.String(128), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
 
-    @property
+    @hybrid_property
     def nom(self):
         return self._nom
 

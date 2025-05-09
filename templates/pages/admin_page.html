@@ -1,0 +1,52 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<style>
+  /* Désactive le responsive de Flask-Admin */
+iframe {
+  min-width: 1000px;
+}
+
+/* Optionnel : cache les barres flottantes si elles s'affichent */
+iframe::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+</style>
+<div class="pc-container">
+  <div class="pc-content">
+
+    <div class="page-header">
+      <div class="page-block">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <div class="page-header-title">
+              <h5 class="mb-0">Interface d'administration</h5>
+            </div>
+            <ul class="breadcrumb">
+              <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Accueil</a></li>
+              <li class="breadcrumb-item active">Admin</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card" style="height: 85vh;">
+          <div class="card-body p-0" style="height: 100%; overflow: hidden;">
+            <iframe 
+              src="{{ url_for('admin.index') }}" 
+              width="100%" 
+              height="100%" 
+              style="border: none; display: block;"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
