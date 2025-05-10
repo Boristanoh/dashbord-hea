@@ -34,7 +34,11 @@ from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 from collections import defaultdict
 import locale
-locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+try:
+    locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+except locale.Error:
+    locale.setlocale(locale.LC_TIME, 'C')  # fallback universel
+
 
 # Approbation d'un utilisateur
 @blueprint.route('/approve-user/<int:user_id>', methods=['POST'])
