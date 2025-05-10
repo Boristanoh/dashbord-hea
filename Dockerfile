@@ -6,6 +6,13 @@ ENV PYTHONUNBUFFERED 1
 ENV FLASK_APP run.py
 ENV DEBUG True
 
+RUN apt-get update && apt-get install -y locales
+RUN locale-gen fr_FR.UTF-8
+ENV LANG fr_FR.UTF-8
+ENV LANGUAGE fr_FR:fr
+ENV LC_ALL fr_FR.UTF-8
+
+
 COPY requirements.txt .
 
 # install python dependencies
