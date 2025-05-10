@@ -3,7 +3,7 @@
 Copyright (c) 2019 - present AppSeed.us
 """
 
-from flask import render_template, redirect, request, url_for
+from flask import render_template, redirect, request, url_for, jsonify
 from flask_login import (
     current_user,
     login_user,
@@ -12,12 +12,12 @@ from flask_login import (
 from flask_dance.contrib.github import github
 from flask_dance.contrib.google import google
 
-from apps import db, login_manager
+from apps import db, login_manager, mail
 from apps.authentication import blueprint
 from apps.authentication.forms import LoginForm, CreateAccountForm
-from apps.authentication.models import Users, Role
+from apps.authentication.models import Users, Role, UserInvitationCode
 from apps.config import Config
-
+from flask_mail import Message
 from apps.authentication.util import verify_pass, hash_pass
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -125,6 +125,11 @@ def login():
                 return render_template('authentication/login.html',
                                        msg='Utilisateur ou email inconnu',
                                        form=login_form)
+        
+        if not user.is_approved or user.is_deleted:
+            return render_template('authentication/login.html',
+                                       msg="Nom d'utilisateur ou mot de passe incorrect",
+                                       form=login_form)
 
         # Vérifier le mot de passe haché
         if check_password_hash(user.password, password):
@@ -153,36 +158,82 @@ def register():
 
         username = request.form['username']
         email = request.form['email']
+        code = request.form['code']
 
         # Vérifie si le nom d'utilisateur existe déjà
-        user = Users.query.filter_by(username=username).first()
-        if user:
+        if Users.query.filter_by(username=username).first():
             return render_template('authentication/register.html',
-                                   msg='Username already registered',
+                                   msg='Username déjà utilisé',
                                    success=False,
                                    form=create_account_form)
 
-        # Vérifie si l'email existe déjà
-        user = Users.query.filter_by(email=email).first()
-        if user:
+        if Users.query.filter_by(email=email).first():
             return render_template('authentication/register.html',
-                                   msg='Email already registered',
+                                   msg='Email déjà utilisé',
                                    success=False,
                                    form=create_account_form)
 
-        # Créer l'utilisateur (le mot de passe est hashé automatiquement dans Users.__init__)
+        # Vérifie si le code d’invitation existe et n’a pas été utilisé
+        invitation = UserInvitationCode.query.filter_by(code=code, is_used=False).first()
+        if not invitation:
+            return render_template('authentication/register.html',
+                                   msg='Code d’invitation invalide ou déjà utilisé',
+                                   success=False,
+                                   form=create_account_form)
+
+        # Créer l’utilisateur avec le rôle associé au code
         user = Users(
             username=username,
             email=email,
-            password=request.form['password']  # ⚠️ mot de passe brut ici
+            password=request.form['password'],
+            role_id=invitation.role_id,
+            is_approved=False,
+            invite_by  = invitation.utilisateur.username
         )
+        # Envoyer l'email ici (à faire avec Flask-Mail)
+
+        destinataire = invitation.utilisateur.email
+
+        msg = Message(
+        subject="Invitation à rejoindre la plateforme – Code d'inscription utilisé",
+        recipients=[destinataire])
+
+        msg.body = f"""
+        Bonjour,
+
+        Le code d'invitation que vous avez généré a été utilisé par l'utilisateur suivant :
+
+        Nom : {username}  
+        Email : {email}
+
+        Cet utilisateur a complété son inscription et attend maintenant votre approbation.
+
+        Veuillez vous rendre sur votre tableau de bord pour valider ou refuser sa demande.
+
+        Si vous n'êtes pas à l'origine de cette invitation, vous pouvez simplement ignorer ce message.
+
+        Bien cordialement,  
+        L’équipe de gestion
+        """
+
+        try:
+            mail.send(msg)
+            # return jsonify({"message": "📧 Bordereau envoyé avec succès !"})
+            flash(f"Invitation envoyée à {email}", "success")
+        except Exception as e:
+            return jsonify({"message": f"Erreur : {str(e)}"}), 500
+
         db.session.add(user)
+        invitation.is_used = True
         db.session.commit()
+        
+
+        # Facultatif : notifier le créateur du code plus tard
+        flash("Compte créé. En attente d’approbation par un administrateur.")
 
         logout_user()
-
         return render_template('authentication/register.html',
-                               msg='Utilisateur crée avec succès',
+                               msg='Inscription réussie. Veuillez attendre la validation par un administrateur.',
                                success=True,
                                form=create_account_form)
 

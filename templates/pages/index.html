@@ -221,7 +221,7 @@
             </div> -->
             <div class="card">
                 <div class="card-header">
-                  <h5>Pie Chart</h5>
+                  <h5>Répartition des flux</h5>
                 </div>
                 <div class="card-body text-center">
                   <div id="pie-chart"  data-repartition='{{ repartition | tojson | safe }}' ></div>
@@ -456,63 +456,42 @@
               </div>
             </div>
           </div>
-          
-          
+              
         <!-- [ Recent Users ] start -->
+        {% if role != 'user' %}
         <div class="col-xl-8 col-md-6">
             <div class="card Recent-Users">
                 <div class="card-header">
                     <h5>Recent Users</h5>
                 </div>
+                
                 <div class="card-body px-0 py-3">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <tbody>
+                              {% if user_invites %}
+                              {% for user in user_invites %}
                                 <tr class="unread">
                                     <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-1.jpg') }}" alt="activity-user"></td>
                                     <td>
-                                        <h6 class="mb-1">Isabella Christensen</h6>
-                                        <p class="m-0">Lorem Ipsum is simply dummy</p>
+                                        <h6 class="mb-1">{{ user.username }}</h6>
+                                        <p class="m-0">{{ user.email }}</p>
+                                        
                                     </td>
                                     <td>
-                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>11 MAY 12:56</h6>
+                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>{{ user.invite_at.strftime('%d %B %Y %H:%M') }} </h6>
                                     </td>
-                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
+                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a>
+                                      <!-- <a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a> -->
+                                      <form method="post" action="{{ url_for('home_blueprint.approve_user', user_id=user.id) }}" style="display:inline;">
+                                        <button type="submit" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</button>
+                                      </form>
+                                    </td>
                                 </tr>
-                                <tr class="unread">
-                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-2.jpg') }}" alt="activity-user"></td>
-                                    <td>
-                                        <h6 class="mb-1">Mathilde Andersen</h6>
-                                        <p class="m-0">Lorem Ipsum is simply</p>
-                                    </td>
-                                    <td>
-                                        <h6 class="text-muted"><i class="fas fa-circle text-danger f-10 m-r-15"></i>11 MAY 10:35</h6>
-                                    </td>
-                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
-                                </tr>
-                                <tr class="unread">
-                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-3.jpg') }}" alt="activity-user"></td>
-                                    <td>
-                                        <h6 class="mb-1">Karla Sorensen</h6>
-                                        <p class="m-0">Lorem Ipsum is simply dummy</p>
-                                    </td>
-                                    <td>
-                                        <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>9 MAY 17:38</h6>
-                                    </td>
-                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
-                                </tr>
-                                <tr class="unread">
-                                    <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-1.jpg') }}" alt="activity-user"></td>
-                                    <td>
-                                        <h6 class="mb-1">Ida Jorgensen</h6>
-                                        <p class="m-0">Lorem Ipsum is simply</p>
-                                    </td>
-                                    <td>
-                                        <h6 class="text-muted f-w-300"><i class="fas fa-circle text-danger f-10 m-r-15"></i>19 MAY 12:56</h6>
-                                    </td>
-                                    <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
-                                </tr>
-                                <tr class="unread">
+                                
+                               
+                            
+                                <!-- <tr class="unread">
                                     <td><img class="rounded-circle" style="width:40px;" src="{{ url_for('static', filename='assets/images/user/avatar-2.jpg') }}" alt="activity-user"></td>
                                     <td>
                                         <h6 class="mb-1">Albert Andersen</h6>
@@ -522,13 +501,21 @@
                                         <h6 class="text-muted"><i class="fas fa-circle text-success f-10 m-r-15"></i>21 July 12:56</h6>
                                     </td>
                                     <td><a href="#!" class="badge me-2 bg-brand-color-2 text-white f-12">Reject</a><a href="#!" class="badge me-2 bg-brand-color-1 text-white f-12">Approve</a></td>
-                                </tr>
+                                </tr> -->
+                                {% endfor %}
+
+                                {% else %}
+                                  <tr>
+                                    <td colspan="3" class="text-center text-muted">Aucun nouvel utilisateur à approuver</td></tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                 </div>
+                
             </div>
         </div>
+        {% endif %}
         <!-- [ Recent Users ] end -->
     </div>
       <!-- [ Main Content ] end -->

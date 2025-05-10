@@ -40,7 +40,7 @@
             <div class="col-md-12">
               <ul class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript: void(0)">Other</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Enregistrement</a></li>
                 <li class="breadcrumb-item" aria-current="page">Enregistrement</li>
               </ul>
             </div>
@@ -99,7 +99,7 @@
   
                 <div class="form-group">
                   {{ form.compte_comptable.label(class="form-label") }}
-                  {{ form.compte_comptable(class="form-control") }}
+                  {{ form.compte_comptable(class="form-control select2") }}
                 </div>
   
                 <div class="form-group">

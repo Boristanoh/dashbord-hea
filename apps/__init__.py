@@ -122,6 +122,8 @@ def create_app(config):
 
 
     class CompteComptableAdminView(CustomAdminView):
+        column_searchable_list = ['numero', 'libelle']
+        column_filters = ['numero', 'libelle']
         form = CompteComptableForm
         form_base_class = SecureForm  # important pour CSRF
 

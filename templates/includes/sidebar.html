@@ -40,7 +40,7 @@
         <li class="pc-item pc-hasmenu">
           <a href="#!" class="pc-link">
             <span class="pc-micon">
-              <i data-feather="align-right"></i>
+              <i data-feather="clipboard"></i> 
             </span>
             <span class="pc-mtext">Bordereau</span><span class="pc-arrow"><i class="ti ti-chevron-right"></i></span>
           </a>
@@ -48,7 +48,7 @@
             <li class="pc-item">
               <a href="{{ url_for('home_blueprint.bordereau') }}" class="pc-link">
                 <span class="pc-micon">
-                  <i data-feather="clipboard"></i> 
+                  <i data-feather="file-plus"></i> 
                 </span>
                 <span class="pc-mtext">Enregistrement</span>
               </a>
@@ -57,7 +57,7 @@
             <li class="pc-item">
               <a href="{{ url_for('home_blueprint.liste_bordereaux') }}" class="pc-link">
                 <span class="pc-micon">
-                  <i data-feather="clipboard"></i> 
+                  <i data-feather="align-right"></i>
                 </span>
                 <span class="pc-mtext">Historique</span>
               </a>
@@ -104,9 +104,18 @@
         </li>
         {% else %} -->
         <li class="pc-item">
+          <a  href="{{ url_for('home_blueprint.gestion_users') }}" class="pc-link">
+            <span class="pc-micon">
+              <i data-feather="users"></i>
+            </span>
+            <span class="pc-mtext">Users</span>
+          </a>
+        </li>
+
+        <li class="pc-item">
           <a  href="{{ url_for('home_blueprint.admin_custom') }}" class="pc-link">
             <span class="pc-micon">
-              <i data-feather="user"></i>
+              <i data-feather="shield"></i>
             </span>
             <span class="pc-mtext">Admin</span>
           </a>

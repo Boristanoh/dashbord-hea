@@ -1,0 +1,163 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+
+  <!-- [ Main Content ] start -->
+  <div class="pc-container">
+    <div class="pc-content">
+      <!-- [ breadcrumb ] start -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="mb-0">Gestion utilisateurs</h5>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <ul class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('home_blueprint.index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript: void(0)">Gestion utilisateurs</a></li>
+                <li class="breadcrumb-item" aria-current="page">Gestion utilisateurs</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- [ breadcrumb ] end -->
+
+      <!-- [ Main Content ] start -->
+      <div class="row">
+        <!-- [ sample-page ] start -->
+        <div class="col-sm-12">
+          <div class="card">
+            <div class="card-header">
+              <h5>Gestion utilisateurs</h5>
+              {% if current_role in ['superadmin', 'senior', 'admin'] %}
+              <button type="button" class="btn btn-sm btn-primary float-end" data-bs-toggle="modal" data-bs-target="#inviteUserModal">
+                Ajouter un utilisateur
+              </button>
+              {% endif %}
+            </div>
+            <div class="card-body">
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                      {{ message }}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              {% endwith %}
+              <h5>Utilisateurs visibles pour : {{ current_role|capitalize }}</h5>
+
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nom d'utilisateur</th>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for user in users %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.role.name }}</td>
+                    <td>
+                      {% if role_hierarchy[user.role.name] > role_hierarchy[current_role] %}
+                      <form method="post" action="{{ url_for('home_blueprint.edit_user', user_id=user.id) }}">
+                        <select name="role" class="form-select">
+                          {% for role in role_hierarchy %}
+                            {% if role_hierarchy[role] > role_hierarchy[current_role] %}
+                              <option value="{{ role }}" {% if role == user.role.name %}selected{% endif %}>
+                                {{ role.capitalize() }}
+                              </option>
+                            {% endif %}
+                          {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary mt-1">Modifier</button>
+                      </form>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if user.is_deleted %}
+                        <span class="badge bg-danger">Supprimé</span>
+                        {% if current_role in ['superadmin', 'senior'] %}
+                          <form method="POST" action="{{ url_for('home_blueprint.restore_user', user_id=user.id) }}"
+                          onsubmit="return confirm('Confirmer la reactivation ?');">
+                            <button type="submit" class="btn btn-sm btn-success">Réactiver</button>
+                          </form>
+                        {% endif %}
+                    
+                      {% endif %}
+                    </td>
+
+                    <td>
+                      {% if role_hierarchy[user.role.name] > role_hierarchy[current_role] %}
+                      <form method="POST" action="{{ url_for('home_blueprint.disable_user', user_id=user.id) }}"
+                            onsubmit="return confirm('Confirmer la suppression ?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                      </form>
+                      {% else %}
+                        <span class="text-muted">Aucune action</span>
+                      {% endif %}
+                    </td>                    
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+
+            </div>
+          </div>
+        </div>
+        <!-- [ sample-page ] end -->
+      </div>
+      <!-- [ Main Content ] end -->
+    </div>
+  </div>
+
+
+
+  <div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form method="POST" action="{{ url_for('home_blueprint.invite_user') }}">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="inviteUserModalLabel">Nouvel utilisateur</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="email" class="form-label">Adresse e-mail</label>
+              <input type="email" class="form-control" name="email" id="email" required>
+            </div>
+            <div class="mb-3">
+              <label for="role" class="form-label">Rôle</label>
+              <select name="role" class="form-select" required>
+                
+                {% for role in role_hierarchy %}
+                  {% if role_hierarchy[role] > role_hierarchy[current_role] %}
+                    <option value="{{ role }}">
+                      {{ role.capitalize() }}
+                    </option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Envoyer l'invitation</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+{% endblock content %}

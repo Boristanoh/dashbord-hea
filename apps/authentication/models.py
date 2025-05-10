@@ -12,6 +12,8 @@ from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from apps import db, login_manager
 from apps.authentication.util import hash_pass
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+
 
 class Users(db.Model, UserMixin):
 
@@ -23,11 +25,16 @@ class Users(db.Model, UserMixin):
     password = db.Column(db.String(255), nullable=False)
     bio           = db.Column(db.Text(), nullable=True)
     photo = db.Column(db.String(255), nullable=True, default=None)
+    is_deleted = db.Column(db.Boolean, default=False)
+
 
 
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     role = db.relationship('Role')
     is_approved = db.Column(db.Boolean, default=False)
+    invite_by = db.Column(db.String(64), unique=True)
+    invite_at = db.Column(db.DateTime, default=datetime.utcnow)
+    accepter_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     oauth_github  = db.Column(db.String(100), nullable=True)
     oauth_google  = db.Column(db.String(100), nullable=True)
@@ -86,6 +93,7 @@ class Users(db.Model, UserMixin):
             raise IntegrityError(error, 422)
         return
     
+    
 class Role(db.Model):
     __tablename__ = 'roles'
 
@@ -94,6 +102,7 @@ class Role(db.Model):
 
     def __repr__(self):
         return self.name
+
 class UserInvitationCode(db.Model):
     __tablename__ = 'invitation_codes'
 
@@ -102,6 +111,8 @@ class UserInvitationCode(db.Model):
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
     role = db.relationship('Role')
     is_used = db.Column(db.Boolean, default=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    utilisateur = db.relationship('Users', backref='invitation_codes')
 
 @login_manager.user_loader
 def user_loader(id):

@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 from apps import db, config, mail
 from apps.models import *
 from apps.tasks import *
-from apps.authentication.models import Users
+from apps.authentication.models import Users, Role, UserInvitationCode
 from flask_wtf import FlaskForm
 from flask import abort
 from apps.home.forms import OperationForm, BordereauForm, ProfileForm
@@ -33,6 +33,207 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 from collections import defaultdict
+import locale
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+
+# Approbation d'un utilisateur
+@blueprint.route('/approve-user/<int:user_id>', methods=['POST'])
+@login_required
+def approve_user(user_id):
+    user = Users.query.get_or_404(user_id)
+
+    if current_user.role.name.lower() not in ['senior', 'superadmin']:
+        flash("Action non autorisée", "danger")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    user.is_approved = True
+    db.session.commit()
+    # Envoyer l'email ici (à faire avec Flask-Mail)
+    destinataire = user.email
+    print(destinataire)
+
+    msg = Message(
+    subject="Votre inscription a été validée",
+    recipients=[destinataire])
+
+    msg.body = f"""
+    Bonjour {user.username},
+
+    Nous avons le plaisir de vous informer que votre inscription a été validée.  
+    Vous pouvez désormais accéder à la plateforme en utilisant vos identifiants.
+
+    Bien cordialement,  
+    L’équipe de gestion
+    """
+
+    try:
+        mail.send(msg)
+        # flash(f"Invitation envoyée à {email}", "success")
+        # return redirect(url_for('home_blueprint.gestion_users'))
+    except Exception as e:
+        return jsonify({"message": f"Erreur : {str(e)}"}), 500
+
+    # flash("Utilisateur approuvé avec succès", "success")
+    # return redirect(url_for('home_blueprint.index'))
+
+
+@blueprint.route('/gestion-users')
+@login_required
+def gestion_users():
+    current_role = current_user.role.name.lower()
+
+    # Corriger l’ordre de la hiérarchie
+    role_priority = ['senior', 'superadmin', 'admin', 'user']
+    role_hierarchy = {role: i for i, role in enumerate(role_priority)}
+    current_index = role_hierarchy[current_role]
+
+    # Rôles qu'on peut voir
+    allowed_roles = [role for role, idx in role_hierarchy.items() if idx >= current_index]
+
+    # Obtenir les utilisateurs visibles (jointure explicite)
+    visible_users = (
+        Users.query
+        .join(Role)
+        .filter(
+            db.func.lower(Role.name).in_([r.lower() for r in allowed_roles]),
+            Users.id != current_user.id,
+        )
+        .all()
+    )
+    # Filtrage : seuls les superadmin et senior voient aussi les supprimés
+    if current_role not in ['superadmin', 'senior']:
+        query = query.filter(Users.is_deleted == False)
+
+    # Rôles qu'on peut attribuer
+    available_roles = Role.query.all()
+    editable_roles = [r for r in available_roles if r.name.lower() in allowed_roles]
+    print(role_hierarchy)
+
+    return render_template(
+        'pages/gestion-users.html',
+        users=visible_users,
+        current_role=current_role,
+        role_hierarchy=role_hierarchy,
+        available_roles=editable_roles
+    )
+
+
+@blueprint.route('/disable-user/<int:user_id>', methods=['POST'])
+@login_required
+def disable_user(user_id):
+    user = Users.query.get_or_404(user_id)
+    # Ne pas désactiver soi-même
+    if user.id == current_user.id:
+        flash("Vous ne pouvez pas désactiver votre propre compte.", "warning")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    user.is_deleted = True
+    db.session.commit()
+    flash(f"L'utilisateur {user.username} a été désactivé.", "success")
+    return redirect(url_for('home_blueprint.gestion_users'))
+
+@blueprint.route('/restore_user/<int:user_id>', methods=['POST'])
+@login_required
+def restore_user(user_id):
+    user = Users.query.get_or_404(user_id)
+    user.is_deleted = False
+    db.session.commit()
+    flash(f"L'utilisateur {user.username} a été réactivé.", "success")
+    return redirect(url_for('home_blueprint.gestion_users'))
+
+@blueprint.route('/gestion-users/edit/<int:user_id>', methods=['POST'])
+@login_required
+def edit_user(user_id):
+    user = Users.query.get_or_404(user_id)
+    new_role_name = request.form.get('role')
+
+    if user.id == current_user.id:
+        flash("Vous ne pouvez pas modifier votre propre rôle.", "warning")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    # Hiérarchie des rôles
+    role_hierarchy = {'senior': 0, 'superadmin': 1, 'admin': 2, 'user': 3}
+    current_rank = role_hierarchy.get(current_user.role.name, 100)
+    target_rank = role_hierarchy.get(user.role.name, 100)
+    new_role_rank = role_hierarchy.get(new_role_name, 100)
+
+    if current_rank >= target_rank or current_rank >= new_role_rank:
+        flash("Action non autorisée.", "danger")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    new_role = Role.query.filter_by(name=new_role_name).first()
+    if not new_role:
+        flash("Rôle invalide.", "danger")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    user.role = new_role
+    db.session.commit()
+    flash("Rôle mis à jour avec succès.", "success")
+    return redirect(url_for('home_blueprint.gestion_users'))
+import secrets
+
+@blueprint.route('/invite-user', methods=['POST'])
+@login_required
+def invite_user():
+    email = request.form.get('email')
+    role_name = request.form.get('role')
+
+    # Valider les rôles autorisés par le rôle actuel
+    current_role = current_user.role.name.lower()
+    role_hierarchy = ['superadmin', 'senior', 'admin', 'user']
+    current_index = role_hierarchy.index(current_role)
+    allowed_roles = role_hierarchy[current_index + 1:]
+
+    if role_name.lower() not in allowed_roles:
+        flash("Vous n'avez pas l'autorisation pour ce rôle", "danger")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    role = Role.query.filter_by(name=role_name).first()
+    if not role:
+        flash("Rôle invalide", "danger")
+        return redirect(url_for('home_blueprint.gestion_users'))
+
+    # Générer le code unique
+    code = secrets.token_urlsafe(16)
+
+    # Enregistrer le code en base
+    invitation = UserInvitationCode(code=code, role=role, created_by=current_user.id)
+    db.session.add(invitation)
+    db.session.commit()
+
+    # Envoyer l'email ici (à faire avec Flask-Mail)
+    destinataire = email
+
+    msg = Message(
+    subject="Invitation à rejoindre la plateforme - Code d'inscription",
+    recipients=[destinataire])
+
+    msg.body = f"""
+    Bonjour,
+
+    Vous avez été invité(e) à rejoindre notre plateforme. 
+    Veuillez utiliser le code ci-dessous pour finaliser votre inscription :
+
+    🟢 Code d'invitation : {code}
+
+    Rendez-vous sur la page d'inscription et entrez ce code pour activer votre accès. 
+    Votre demande sera ensuite examinée et validée par un administrateur.
+
+    Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer ce message.
+
+    Cordialement,  
+    L’équipe de gestion
+    """
+
+    try:
+        mail.send(msg)
+        # return jsonify({"message": "📧 Bordereau envoyé avec succès !"})
+        flash(f"Invitation envoyée à {email}", "success")
+        return redirect(url_for('home_blueprint.gestion_users'))
+    except Exception as e:
+        return jsonify({"message": f"Erreur : {str(e)}"}), 500
+    
+   
 
 @blueprint.route('/admin-page')
 @login_required
@@ -187,11 +388,21 @@ def index():
     benefice_mois_list = [round(benefice_mensuel.get(m, 0), 2) for m in range(1, mois_max + 1)]
     mois_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][:mois_max]
 
-    print(benefice_mois_list)
+    
+    
     repartition_entrees_sorties = {
     "Entrées": stats_current['entree'],
     "Sorties": stats_current['sortie']
 }
+    # print(current_user.username)
+    user_invites = (
+        Users.query
+        .filter(
+            Users.invite_by == current_user.username,
+            Users.is_approved == 0,
+        )
+        .all()
+    )
     print(repartition_entrees_sorties)
 
 
@@ -207,7 +418,9 @@ def index():
         benefice_mois=benefice_mois_list,
         mois_labels=mois_labels,
         top_clients=top_clients,
-        repartition=repartition_entrees_sorties
+        repartition=repartition_entrees_sorties,
+        user_invites= user_invites,
+        role = current_user.role.name
     )
 
 @blueprint.route('/mois_disponibles/<int:annee>')
@@ -234,27 +447,6 @@ def jours_disponibles(annee, mois):
     return jsonify(jours)
 from flask import jsonify
 
-# @blueprint.route("/dashboard/filtre-options")
-# def get_filtre_options():
-#     # Exemple : simule des dates extraites de la base
-#     dates_str = ["2023-01-05", "2023-01-20", "2023-02-10", "2023-02-25", "2023-03-15", "2024-04-01", "2024-04-20"]
-#     dates = [datetime.strptime(d, "%Y-%m-%d") for d in dates_str]
-
-#     mois_par_annee = {}
-#     jours_par_annee_mois = {}
-
-#     for dt in dates:
-#         annee, mois, jour = dt.year, dt.month, dt.day
-#         mois_par_annee.setdefault(annee, set()).add(mois)
-#         jours_par_annee_mois.setdefault((annee, mois), set()).add(jour)
-
-#     mois_par_annee = {k: sorted(list(v)) for k, v in mois_par_annee.items()}
-#     jours_par_annee_mois = {f"{k[0]}-{k[1]}": sorted(list(v)) for k, v in jours_par_annee_mois.items()}
-
-#     return jsonify({
-#         "mois": mois_par_annee,
-#         "jours": jours_par_annee_mois
-#     })
 
 @blueprint.route('/enregistrement')
 def enregistrement():
@@ -714,206 +906,173 @@ def require_login():
         if not any(endpoint.startswith(pub) for pub in public_routes):
             return redirect(url_for('authentication_blueprint.login'))
 
+# @blueprint.route('/insert_comptes')
+# def insert_comptes():
+#     comptes_data =  [
+#     {"numero": "90", "libelle": "COMPTES DE BILAN – CLASSE 9"},
+#     {"numero": "91", "libelle": "BILAN D’OUVERTURE"},
+#     {"numero": "911", "libelle": "ACTIF DU BILAN D’OUVERTURE"},
+#     {"numero": "912", "libelle": "PASSIF DU BILAN D’OUVERTURE"},
+#     {"numero": "92", "libelle": "CHARGES À RÉPARTIR SUR PLUSIEURS EXERCICES"},
+#     {"numero": "921", "libelle": "FRAIS D’ÉTABLISSEMENT"},
+#     {"numero": "922", "libelle": "FRAIS D’ACQUISITION DES IMMOBILISATIONS"},
+#     {"numero": "923", "libelle": "FRAIS DE RECHERCHE ET DE DÉVELOPPEMENT"},
+#     {"numero": "924", "libelle": "PRIMES DE REMBOURSEMENT DES EMPRUNTS"},
+#     {"numero": "93", "libelle": "RÉSULTATS EN ATTENTE D’AFFECTATION"},
+#     {"numero": "931", "libelle": "RÉSULTAT BÉNÉFICIAIRE"},
+#     {"numero": "932", "libelle": "RÉSULTAT DÉFICITAIRE"},
+#     {"numero": "94", "libelle": "COMPTES D’ATTENTE"},
+#     {"numero": "941", "libelle": "COMPTES D’ATTENTE – DÉBIT"},
+#     {"numero": "942", "libelle": "COMPTES D’ATTENTE – CRÉDIT"},
+#     {"numero": "95", "libelle": "COMPTES TRANSITOIRES OU SUSPENS"},
+#     {"numero": "951", "libelle": "DÉBIT TRANSITOIRE OU SUSPENS"},
+#     {"numero": "952", "libelle": "CRÉDIT TRANSITOIRE OU SUSPENS"},
+#     {"numero": "96", "libelle": "DÉCALAGES ET RÉGULARISATIONS"},
+#     {"numero": "961", "libelle": "CHARGES CONSTATÉES D’AVANCE"},
+#     {"numero": "962", "libelle": "PRODUITS CONSTATÉS D’AVANCE"},
+#     {"numero": "963", "libelle": "CHARGES À PAYER"},
+#     {"numero": "964", "libelle": "PRODUITS À RECEVOIR"},
+#     {"numero": "97", "libelle": "COMPTES DE RÉGULARISATION INTRA-GROUPE"},
+#     {"numero": "971", "libelle": "COMPTES DE RÉGULARISATION AVEC LES FILIALES"},
+#     {"numero": "972", "libelle": "COMPTES DE RÉGULARISATION AVEC LA MAISON MÈRE"},
+#     {"numero": "973", "libelle": "COMPTES DE RÉGULARISATION AVEC LES ENTREPRISES LIÉES"},
+#     {"numero": "98", "libelle": "ÉCARTS DE CONVERSION"},
+#     {"numero": "981", "libelle": "ÉCARTS DE CONVERSION – ACTIF"},
+#     {"numero": "982", "libelle": "ÉCARTS DE CONVERSION – PASSIF"},
+#     {"numero": "99", "libelle": "COMPTES DE PROVISIONS POUR RISQUES ET CHARGES"},
+#     {"numero": "991", "libelle": "PROVISIONS POUR LITIGES"},
+#     {"numero": "992", "libelle": "PROVISIONS POUR GARANTIES DONNÉES AUX CLIENTS"},
+#     {"numero": "993", "libelle": "PROVISIONS POUR PERTES SUR MARCHÉS À TERME"},
+#     {"numero": "994", "libelle": "PROVISIONS POUR AMENDES ET PÉNALITÉS"},
+#     {"numero": "995", "libelle": "PROVISIONS POUR DÉPRÉCIATION DES IMMOBILISATIONS"},
+#     {"numero": "996", "libelle": "AUTRES PROVISIONS POUR RISQUES"},
+#     {"numero": "997", "libelle": "PROVISIONS POUR CHARGES À RÉPARTIR SUR PLUSIEURS EXERCICES"},
+# ]
+
+#     objets_comptes = [CompteComptable(numero=compte["numero"], libelle=compte["libelle"].upper()) for compte in comptes_data]
+
+#     db.session.add_all(objets_comptes)
+#     db.session.commit()
+
+#     return "✅ Tous les comptes comptables ont été insérés avec succès !"
+
+# @blueprint.route('/insert_categories')
+# def insert_categories():
+#     categories_data = [
+#         {"code": "1.1", "libelle": "Ventes de produits"},
+#         {"code": "1.2", "libelle": "Prestations de services"},
+#         {"code": "1.3", "libelle": "Revenus locatifs (loyers perçus)"},
+#         {"code": "1.4", "libelle": "Investissements reçus (fonds levés, actionnaires)"},
+#         {"code": "1.5", "libelle": "Subventions et aides"},
+#         {"code": "1.6", "libelle": "Remboursements reçus"},
+#         {"code": "1.7", "libelle": "Autres revenus divers"},
+#         {"code": "2.1.1", "libelle": "Achats de marchandises"},
+#         {"code": "2.1.2", "libelle": "Fournitures de bureau"},
+#         {"code": "2.1.3", "libelle": "Publicité & Marketing"},
+#         {"code": "2.1.4", "libelle": "Logiciels et abonnements"},
+#         {"code": "2.2.1", "libelle": "Loyer & charges locatives"},
+#         {"code": "2.2.2", "libelle": "Factures d’électricité, eau, internet"},
+#         {"code": "2.2.3", "libelle": "Entretien & réparations"},
+#         {"code": "2.3.1", "libelle": "Salaires & charges sociales"},
+#         {"code": "2.3.2", "libelle": "Frais de formation"},
+#         {"code": "2.3.3", "libelle": "Remboursement de notes de frais"},
+#         {"code": "2.4.1", "libelle": "Billets de train/avion"},
+#         {"code": "2.4.2", "libelle": "Essence & péages"},
+#         {"code": "2.4.3", "libelle": "Location de voiture"},
+#         {"code": "2.5.1", "libelle": "Impôts & taxes"},
+#         {"code": "2.5.2", "libelle": "Frais bancaires & intérêts d’emprunt"},
+#         {"code": "2.5.3", "libelle": "Assurances"},
+#         {"code": "2.6.1", "libelle": "Pertes & vols"},
+#         {"code": "2.6.2", "libelle": "Dons & mécénat"},
+#         {"code": "2.6.3", "libelle": "Autres charges diverses"},
+#     ]
+
+#     objets_categories = [CategorieComptable(code=c["code"], libelle=c["libelle"].upper()) for c in categories_data]
+
+#     db.session.add_all(objets_categories)
+#     db.session.commit()
+
+#     return "✅ Catégories comptables insérées avec succès !"
+
+# @blueprint.route('/insert_monnaies')
+# def insert_monnaies():
+#     monnaies = [
+#     {"code": "USD", "name": "Dollar Américain", "symbol": "$", "fcfa_rate": 610},
+#     {"code": "EUR", "name": "Euro", "symbol": "€", "fcfa_rate": 655},
+#     {"code": "GBP", "name": "Livre Sterling", "symbol": "£", "fcfa_rate": 760},
+#     {"code": "JPY", "name": "Yen Japonais", "symbol": "¥", "fcfa_rate": 4.3},
+#     {"code": "XOF", "name": "Franc CFA BCEAO", "symbol": "F", "is_base": True, "fcfa_rate": 1},
+#     {"code": "XAF", "name": "Franc CFA BEAC", "symbol": "F", "fcfa_rate": 1},
+#     {"code": "CHF", "name": "Franc Suisse", "symbol": "CHF", "fcfa_rate": 670},
+#     {"code": "CAD", "name": "Dollar Canadien", "symbol": "CA$", "fcfa_rate": 450},
+#     {"code": "AUD", "name": "Dollar Australien", "symbol": "AU$", "fcfa_rate": 400},
+#     {"code": "CNY", "name": "Yuan Chinois", "symbol": "¥", "fcfa_rate": 85},
+#     {"code": "INR", "name": "Roupie Indienne", "symbol": "₹", "fcfa_rate": 7.3},
+#     {"code": "MAD", "name": "Dirham Marocain", "symbol": "DH", "fcfa_rate": 60},
+#     {"code": "ZAR", "name": "Rand Sud-Africain", "symbol": "R", "fcfa_rate": 35},
+#     {"code": "DZD", "name": "Dinar Algérien", "symbol": "DA", "fcfa_rate": 4.5},
+#     {"code": "EGP", "name": "Livre Égyptienne", "symbol": "E£", "fcfa_rate": 13},
+#     {"code": "RUB", "name": "Rouble Russe", "symbol": "₽", "fcfa_rate": 6.5},
+#     {"code": "SAR", "name": "Riyal Saoudien", "symbol": "ر.س", "fcfa_rate": 162},
+#     {"code": "MXN", "name": "Peso Mexicain", "symbol": "MX$", "fcfa_rate": 34},
+#     {"code": "SEK", "name": "Couronne Suédoise", "symbol": "kr", "fcfa_rate": 58},
+#     {"code": "NOK", "name": "Couronne Norvégienne", "symbol": "kr", "fcfa_rate": 61},
+#     {"code": "DKK", "name": "Couronne Danoise", "symbol": "kr", "fcfa_rate": 88},
+#     {"code": "THB", "name": "Baht Thaïlandais", "symbol": "฿", "fcfa_rate": 17},
+#     {"code": "KRW", "name": "Won Sud-Coréen", "symbol": "₩", "fcfa_rate": 0.45},
+#     {"code": "MYR", "name": "Ringgit Malaisien", "symbol": "RM", "fcfa_rate": 125},
+#     {"code": "PHP", "name": "Peso Philippin", "symbol": "₱", "fcfa_rate": 11},
+#     {"code": "TND", "name": "Dinar Tunisien", "symbol": "DT", "fcfa_rate": 198},
+#     {"code": "IRR", "name": "Rial Iranien", "symbol": "﷼", "fcfa_rate": 0.015},
+#     {"code": "KWD", "name": "Dinar Koweïtien", "symbol": "KD", "fcfa_rate": 2000},
+#     {"code": "KES", "name": "Shilling Kényan", "symbol": "KSh", "fcfa_rate": 4.5},
+#     {"code": "RON", "name": "Leu Roumain", "symbol": "lei", "fcfa_rate": 132},
+#     {"code": "VND", "name": "Dong Vietnamien", "symbol": "₫", "fcfa_rate": 0.025},
+#     {"code": "PKR", "name": "Roupie Pakistanaise", "symbol": "₨", "fcfa_rate": 2.2},
+#     {"code": "ILS", "name": "Shekel Israélien", "symbol": "₪", "fcfa_rate": 170},
+#     {"code": "ARS", "name": "Peso Argentin", "symbol": "$", "fcfa_rate": 0.7},
+#     {"code": "IQD", "name": "Dinar Irakien", "symbol": "ع.د", "fcfa_rate": 0.47}
+# ]
+
+#     objets_monnaies = []
+#     for m in monnaies:
+#         monnaie = Money(
+#             code=m["code"],
+#             name=m["name"],
+#             symbol=m["symbol"],
+#             rate_to_fcfa=m["fcfa_rate"],
+#             is_active=True,
+#             is_base_currency=m.get("is_base", False)
+#         )
+#         objets_monnaies.append(monnaie)
+
+#     db.session.add_all(objets_monnaies)
+#     db.session.commit()
+#     return "✅ Monnaies insérées avec succès !"
 
 
+# import csv
 
 
+# @blueprint.route('/import-comptes-auto')
+# def import_comptes_auto():
+#     try:
+#         with open('data/plan_comptable.csv', mode='r', encoding='latin1') as file:
+#             reader = csv.reader(file, delimiter=';')
+#             next(reader)  # Ignore l'en-tête s'il existe
 
+#             for row in reader:
+#                 if len(row) < 2:
+#                     continue
+#                 numero = row[0].strip()
+#                 libelle = row[1].strip()
 
+#                 if not CompteComptable.query.filter_by(numero=numero).first():
+#                     compte = CompteComptable(numero=numero, libelle=libelle)
+#                     db.session.add(compte)
 
-
-
-
-
-
-
-
-
-
-
-
-
-@blueprint.route('/insert_activites')
-def insert_activites():
-    activites = [
-        "EQUIPEMENT ET FOURNITURES",
-        "AGRONOMIE",
-        "CONSTRUCTION ET IMMOBILIER",
-        "HOTELLERIE ET EVENEMENTIEL",
-        "EGLISE MISSION EMMANUEL",
-        "DEPENSES PERSONNELLES"
-    ]
-    objets_activites = [PoleActivite(nom=nom.upper()) for nom in activites]
-    db.session.add_all(objets_activites)
-    db.session.commit()
-    return "✅ Activités insérées !"
-
-@blueprint.route('/insert_comptes')
-def insert_comptes():
-    comptes_data = [
-        {"numero": "1011", "libelle": "CAPITAL SOUSCRIT, NON APPELE"},
-        {"numero": "1012", "libelle": "CAPITAL SOUSCRIT, APPELE, NON VERSE"},
-        {"numero": "1013", "libelle": "CAPITAL SOUSCRIT, APPELE, VERSE, NON AMORTI"},
-        {"numero": "1014", "libelle": "CAPITAL SOUSCRIT, APPELE, VERSE, AMORTI"},
-        {"numero": "1018", "libelle": "CAPITAL SOUSCRIT SOUMIS A DES CONDITIONS PARTICULIERES"},
-        {"numero": "102", "libelle": "CAPITAL PAR DOTATION"},
-        {"numero": "1021", "libelle": "DOTATION INITIALE"},
-        {"numero": "1022", "libelle": "DOTATIONS COMPLEMENTAIRES"},
-        {"numero": "1028", "libelle": "AUTRES DOTATIONS"},
-        {"numero": "103", "libelle": "CAPITAL PERSONNEL"},
-        {"numero": "104", "libelle": "COMPTE DE L'EXPLOITANT"},
-        {"numero": "1041", "libelle": "APPORTS TEMPORAIRES"},
-        {"numero": "1042", "libelle": "OPERATIONS COURANTES"},
-        {"numero": "1043", "libelle": "REMUNERATIONS, IMPOTS ET AUTRES CHARGES PERSONNELLES"},
-        {"numero": "1047", "libelle": "PRELEVEMENTS D'AUTOCONSOMMATION"},
-        {"numero": "1048", "libelle": "AUTRES PRELEVEMENTS"},
-        {"numero": "105", "libelle": "PRIMES LIEES AU CAPITAL SOCIAL"},
-        {"numero": "1051", "libelle": "PRIMES D'EMISSION"},
-        {"numero": "1052", "libelle": "PRIMES D'APPORT"},
-        {"numero": "1053", "libelle": "PRIMES DE FUSION"},
-        {"numero": "1054", "libelle": "PRIMES DE CONVERSION"},
-        {"numero": "1058", "libelle": "AUTRES PRIMES"},
-        {"numero": "106", "libelle": "ECARTS DE REEVALUATION"},
-        {"numero": "1061", "libelle": "ECARTS DE REEVALUATION LEGALE"},
-        {"numero": "1062", "libelle": "ECARTS DE REEVALUATION LIBRE"},
-        {"numero": "109", "libelle": "APPORTEURS, CAPITAL SOUSCRIT, NON APPELE"},
-        {"numero": "11", "libelle": "RESERVES"},
-        {"numero": "111", "libelle": "RESERVE LEGALE"},
-        {"numero": "112", "libelle": "RESERVES STATUTAIRES OU CONTRACTUELLES"},
-        {"numero": "113", "libelle": "RESERVES REGLEMENTEES"},
-        {"numero": "1132", "libelle": "RESERVES DE PLUS-VALUES NETTES A LONG TERME"},
-        {"numero": "1134", "libelle": "RESERVES CONSECUTIVES A L'OCTROI DE SUBVENTIONS D'INVESTISSEMENT"},
-        {"numero": "1138", "libelle": "AUTRES RESERVES REGLEMENTEES"},
-        {"numero": "118", "libelle": "AUTRES RESERVES"},
-        {"numero": "1188", "libelle": "RESERVES FACULTATIVES"},
-        {"numero": "12", "libelle": "REPORT A NOUVEAU"},
-        {"numero": "121", "libelle": "REPORT A NOUVEAU CREDITEUR"},
-        {"numero": "129", "libelle": "REPORT A NOUVEAU DEBITEUR"},
-        {"numero": "1291", "libelle": "PERTE NETTE A REPORTER"},
-        {"numero": "1292", "libelle": "PERTE - AMORTISSEMENTS REPUTES DIFFERES"},
-        {"numero": "13", "libelle": "RESULTAT NET DE L'EXERCICE"},
-        {"numero": "130", "libelle": "RESULTAT EN INSTANCE D'AFFECTATION"},
-        {"numero": "1301", "libelle": "RESULTAT EN INSTANCE D'AFFECTATION : BENEFICE"},
-        {"numero": "1309", "libelle": "RESULTAT EN INSTANCE D'AFFECTATION : PERTE"},
-        {"numero": "131", "libelle": "RESULTAT NET : BENEFICE"},
-        {"numero": "132", "libelle": "MARGE COMMERCIALE (MC)"},
-        {"numero": "133", "libelle": "VALEUR AJOUTEE (V.A.)"},
-        {"numero": "134", "libelle": "EXCEDENT BRUT D'EXPLOITATION (E.B.E.)"},
-        {"numero": "135", "libelle": "RESULTAT D'EXPLOITATION (R.E.)"},
-        {"numero": "136", "libelle": "RESULTAT FINANCIER (R.F.)"},
-        {"numero": "137", "libelle": "RESULTAT DES ACTIVITES ORDINAIRES (R.A.O.)"},
-        {"numero": "138", "libelle": "RESULTAT HORS ACTIVITES ORDINAIRES (R.H.A.O.)"},
-        {"numero": "139", "libelle": "RESULTAT NET : PERTE"},
-        {"numero": "14", "libelle": "SUBVENTIONS D'INVESTISSEMENT"},
-        {"numero": "141", "libelle": "SUBVENTIONS D'EQUIPEMENT"},
-        {"numero": "1411", "libelle": "ETAT"},
-        {"numero": "1412", "libelle": "REGIONS"},
-        {"numero": "1413", "libelle": "DEPARTEMENTS"},
-        {"numero": "1414", "libelle": "COMMUNES ET COLLECTIVITES PUBLIQUES DECENTRALISEES"},
-        {"numero": "1415", "libelle": "ENTITES PUBLIQUES OU MIXTES"},
-        {"numero": "1416", "libelle": "ENTITES ET ORGANISMES PRIVES"},
-        {"numero": "1417", "libelle": "ORGANISMES INTERNATIONAUX"},
-        {"numero": "1418", "libelle": "AUTRES"},
-        # ⏩ Continuer tout comme ça jusqu’à 705, en reprenant exactement ton fichier ⏩
-    ]
-
-    objets_comptes = [CompteComptable(numero=compte["numero"], libelle=compte["libelle"].upper()) for compte in comptes_data]
-
-    db.session.add_all(objets_comptes)
-    db.session.commit()
-
-    return "✅ Tous les comptes comptables ont été insérés avec succès !"
-
-@blueprint.route('/insert_categories')
-def insert_categories():
-    categories_data = [
-        {"code": "1.1", "libelle": "Ventes de produits"},
-        {"code": "1.2", "libelle": "Prestations de services"},
-        {"code": "1.3", "libelle": "Revenus locatifs (loyers perçus)"},
-        {"code": "1.4", "libelle": "Investissements reçus (fonds levés, actionnaires)"},
-        {"code": "1.5", "libelle": "Subventions et aides"},
-        {"code": "1.6", "libelle": "Remboursements reçus"},
-        {"code": "1.7", "libelle": "Autres revenus divers"},
-        {"code": "2.1.1", "libelle": "Achats de marchandises"},
-        {"code": "2.1.2", "libelle": "Fournitures de bureau"},
-        {"code": "2.1.3", "libelle": "Publicité & Marketing"},
-        {"code": "2.1.4", "libelle": "Logiciels et abonnements"},
-        {"code": "2.2.1", "libelle": "Loyer & charges locatives"},
-        {"code": "2.2.2", "libelle": "Factures d’électricité, eau, internet"},
-        {"code": "2.2.3", "libelle": "Entretien & réparations"},
-        {"code": "2.3.1", "libelle": "Salaires & charges sociales"},
-        {"code": "2.3.2", "libelle": "Frais de formation"},
-        {"code": "2.3.3", "libelle": "Remboursement de notes de frais"},
-        {"code": "2.4.1", "libelle": "Billets de train/avion"},
-        {"code": "2.4.2", "libelle": "Essence & péages"},
-        {"code": "2.4.3", "libelle": "Location de voiture"},
-        {"code": "2.5.1", "libelle": "Impôts & taxes"},
-        {"code": "2.5.2", "libelle": "Frais bancaires & intérêts d’emprunt"},
-        {"code": "2.5.3", "libelle": "Assurances"},
-        {"code": "2.6.1", "libelle": "Pertes & vols"},
-        {"code": "2.6.2", "libelle": "Dons & mécénat"},
-        {"code": "2.6.3", "libelle": "Autres charges diverses"},
-    ]
-
-    objets_categories = [CategorieComptable(code=c["code"], libelle=c["libelle"].upper()) for c in categories_data]
-
-    db.session.add_all(objets_categories)
-    db.session.commit()
-
-    return "✅ Catégories comptables insérées avec succès !"
-
-@blueprint.route('/insert_monnaies')
-def insert_monnaies():
-    monnaies = [
-        {"code": "USD", "name": "Dollar Américain", "symbol": "$"},
-        {"code": "EUR", "name": "Euro", "symbol": "€"},
-        {"code": "GBP", "name": "Livre Sterling", "symbol": "£"},
-        {"code": "JPY", "name": "Yen Japonais", "symbol": "¥"},
-        {"code": "XOF", "name": "Franc CFA BCEAO", "symbol": "F", "is_base": True},
-        {"code": "XAF", "name": "Franc CFA BEAC", "symbol": "F"},
-        {"code": "CHF", "name": "Franc Suisse", "symbol": "CHF"},
-        {"code": "CAD", "name": "Dollar Canadien", "symbol": "CA$"},
-        {"code": "AUD", "name": "Dollar Australien", "symbol": "AU$"},
-        {"code": "CNY", "name": "Yuan Chinois", "symbol": "¥"},
-        {"code": "INR", "name": "Roupie Indienne", "symbol": "₹"},
-        {"code": "MAD", "name": "Dirham Marocain", "symbol": "DH"},
-        {"code": "ZAR", "name": "Rand Sud-Africain", "symbol": "R"},
-        {"code": "DZD", "name": "Dinar Algérien", "symbol": "DA"},
-        {"code": "EGP", "name": "Livre Égyptienne", "symbol": "E£"},
-        {"code": "RUB", "name": "Rouble Russe", "symbol": "₽"},
-        {"code": "SAR", "name": "Riyal Saoudien", "symbol": "ر.س"},
-        {"code": "MXN", "name": "Peso Mexicain", "symbol": "MX$"},
-        {"code": "SEK", "name": "Couronne Suédoise", "symbol": "kr"},
-        {"code": "NOK", "name": "Couronne Norvégienne", "symbol": "kr"},
-        {"code": "DKK", "name": "Couronne Danoise", "symbol": "kr"},
-        {"code": "THB", "name": "Baht Thaïlandais", "symbol": "฿"},
-        {"code": "KRW", "name": "Won Sud-Coréen", "symbol": "₩"},
-        {"code": "MYR", "name": "Ringgit Malaisien", "symbol": "RM"},
-        {"code": "PHP", "name": "Peso Philippin", "symbol": "₱"},
-        {"code": "TND", "name": "Dinar Tunisien", "symbol": "DT"},
-        {"code": "IRR", "name": "Rial Iranien", "symbol": "﷼"},
-        {"code": "KWD", "name": "Dinar Koweïtien", "symbol": "KD"},
-        {"code": "KES", "name": "Shilling Kényan", "symbol": "KSh"},
-        {"code": "RON", "name": "Leu Roumain", "symbol": "lei"},
-        {"code": "VND", "name": "Dong Vietnamien", "symbol": "₫"},
-        {"code": "PKR", "name": "Roupie Pakistanaise", "symbol": "₨"},
-        {"code": "ILS", "name": "Shekel Israélien", "symbol": "₪"},
-        {"code": "ARS", "name": "Peso Argentin", "symbol": "$"},
-        {"code": "IQD", "name": "Dinar Irakien", "symbol": "ع.د"}
-    ]
-
-    objets_monnaies = []
-    for m in monnaies:
-        monnaie = Money(
-            code=m["code"],
-            name=m["name"],
-            symbol=m["symbol"],
-            rate_to_fcfa=100,
-            is_active=True,
-            is_base_currency=m.get("is_base", False)
-        )
-        objets_monnaies.append(monnaie)
-
-    db.session.add_all(objets_monnaies)
-    db.session.commit()
-    return "✅ Monnaies insérées avec succès !"
+#             db.session.commit()
+#             return 'Importation réussie depuis le fichier CSV.'
+#     except Exception as e:
+#         db.session.rollback()
+#         return f'Erreur pendant l\'import : {e}'
