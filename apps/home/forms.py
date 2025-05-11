@@ -69,7 +69,8 @@ class OperationForm(FlaskForm):
         query_factory=lambda: Money.query.filter_by(is_active=True).all(),
         get_label='code',
         allow_blank=False,
-        validators=[DataRequired()]
+        validators=[DataRequired()],
+        default=lambda: Money.query.filter_by(code='XOF', is_active=True).first()
     )
 
     type_operation = SelectField(

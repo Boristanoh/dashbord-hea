@@ -180,9 +180,10 @@
                         <div class="col-9">
                             <h3 class="f-w-300 d-flex align-items-center m-b-0">
                                 {% if sortie_up %}
-                                <i class="feather icon-arrow-up text-success f-30 m-r-10"></i>
+                                <i class="feather icon-arrow-up text-danger f-30 m-r-10"></i>
+                                
                                 {% elif sortie_down %}
-                                <i class="feather icon-arrow-down text-danger f-30 m-r-10"></i>
+                                <i class="feather icon-arrow-down text-success f-30 m-r-10"></i>
                                
                                 {% endif %}
                                 {{ "{:,.0f}".format(sortie_val).replace(",", " ") }}
@@ -199,7 +200,7 @@
                         </div>
                     </div>
                     <div class="progress m-t-30" style="height: 7px;">
-                        <div class="progress-bar {{ 'bg-success' if sortie_up else 'bg-danger' if sortie_down else 'bg-secondary' }}"
+                        <div class="progress-bar {{ 'bg-danger' if sortie_up else 'bg-success' if sortie_down else 'bg-secondary' }}"
                             role="progressbar"
                             style="width: {{ sortie_delta|abs if not sortie_neutre else 0 }}%;"
                             aria-valuenow="{{ sortie_delta }}"

@@ -94,19 +94,21 @@ def gestion_users():
     # Rôles qu'on peut voir
     allowed_roles = [role for role, idx in role_hierarchy.items() if idx >= current_index]
 
-    # Obtenir les utilisateurs visibles (jointure explicite)
-    visible_users = (
-        Users.query
-        .join(Role)
-        .filter(
-            db.func.lower(Role.name).in_([r.lower() for r in allowed_roles]),
-            Users.id != current_user.id,
-        )
-        .all()
+    query = (
+    Users.query
+    .join(Role)
+    .filter(
+        db.func.lower(Role.name).in_([r.lower() for r in allowed_roles]),
+        Users.id != current_user.id,
     )
+)
+
     # Filtrage : seuls les superadmin et senior voient aussi les supprimés
     if current_role not in ['superadmin', 'senior']:
         query = query.filter(Users.is_deleted == False)
+
+    visible_users = query.all()
+
 
     # Rôles qu'on peut attribuer
     available_roles = Role.query.all()
