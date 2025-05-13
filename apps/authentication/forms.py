@@ -5,7 +5,7 @@ Copyright (c) 2019 - present AppSeed.us
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField
-from wtforms.validators import Email, DataRequired
+from wtforms.validators import Email, DataRequired,  EqualTo, Length
 
 # login and registration
 
@@ -28,3 +28,26 @@ class CreateAccountForm(FlaskForm):
                              id='pwd_create',
                              validators=[DataRequired()])
     code = StringField('Code d’invitation', validators=[DataRequired()])
+
+class ForgetAccountForm(FlaskForm):
+    email = StringField('Email',
+                      id='email_user',
+                      validators=[DataRequired(), Email()])
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField(
+        'Nouveau mot de passe',
+        validators=[
+            DataRequired(message="Veuillez entrer un mot de passe."),
+            Length(min=6, message="Le mot de passe doit contenir au moins 6 caractères.")
+        ]
+    )
+
+    confirm_password = PasswordField(
+        'Confirmer le mot de passe',
+        validators=[
+            DataRequired(message="Veuillez confirmer votre mot de passe."),
+            EqualTo('password', message="Les mots de passe ne correspondent pas.")
+        ]
+    )
+

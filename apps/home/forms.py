@@ -30,6 +30,9 @@ class CreateAccountForm(FlaskForm):
     password = PasswordField('Password',
                              id='pwd_create',
                              validators=[DataRequired()])
+
+
+
 class ProfileForm(FlaskForm):
         username = StringField('Nom d’utilisateur', validators=[DataRequired()])
         email = StringField('Email', validators=[DataRequired(), Email()])

@@ -642,7 +642,7 @@ def bordereau():
 @login_required
 def apercu_bordereau_pdf():
     form_data = request.form.to_dict(flat=True)
-    print("📥 Données reçues :", form_data)  # ← Vérifie bien ça dans ta console Flask
+    # print("📥 Données reçues :", form_data)  # ← Vérifie bien ça dans ta console Flask
 
     html = render_template("recu/bordereau_pdf_template.html", form=form_data)
     pdf = BytesIO()

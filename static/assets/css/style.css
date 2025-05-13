@@ -41,6 +41,28 @@ File: style.css
   --pc-sidebar-caption-color: #3f4d67;
 }
 
+  /* Mobile: forcer une meilleure taille de la modal et iframe */
+  @media (max-width: 768px) {
+    .modal-dialog.modal-xl {
+      max-width: 100% !important;
+      margin: 0;
+    }
+
+    .modal-content {
+      height: 90vh;
+    }
+
+    .modal-body {
+      height: 70vh !important;
+      padding: 0;
+    }
+
+    #pdfFrame {
+      height: 100% !important;
+      width: 100%;
+    }
+  }
+
 body {
   font-feature-settings: "salt";
 }

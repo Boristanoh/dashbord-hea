@@ -14,13 +14,14 @@ from flask_dance.contrib.google import google
 
 from apps import db, login_manager, mail
 from apps.authentication import blueprint
-from apps.authentication.forms import LoginForm, CreateAccountForm
-from apps.authentication.models import Users, Role, UserInvitationCode
+from apps.authentication.forms import LoginForm, CreateAccountForm, ForgetAccountForm, ResetPasswordForm
+from apps.authentication.models import Users, Role, UserInvitationCode, ResetToken
 from apps.config import Config
 from flask_mail import Message
 from apps.authentication.util import verify_pass, hash_pass
 from werkzeug.security import generate_password_hash, check_password_hash
-
+import uuid
+from datetime import datetime, timedelta
 # Login & Registration
 
 # @blueprint.route("/github")
@@ -185,7 +186,7 @@ def register():
         user = Users(
             username=username,
             email=email,
-            password=request.form['password'],
+            password= request.form['password'],
             role_id=invitation.role_id,
             is_approved=False,
             invite_by  = invitation.utilisateur.username
@@ -238,6 +239,90 @@ def register():
                                form=create_account_form)
 
     return render_template('authentication/register.html', form=create_account_form)
+
+
+
+@blueprint.route('/forget', methods=['GET', 'POST'])
+def forget():
+    forget_account_form = ForgetAccountForm(request.form)
+
+    if 'forget' in request.form:
+        email = request.form['email']
+        user = Users.query.filter_by(email=email).first()
+
+        if user:
+            if not user.is_approved or user.is_deleted:
+                return render_template('authentication/forget.html',
+                                       msg="L'email n'existe pas",
+                                       form=forget_account_form)
+
+            # --- 1. Générer un token sécurisé ---
+            token = str(uuid.uuid4())
+            expire_time = datetime.utcnow() + timedelta(minutes=30)
+
+            # --- 2. Sauvegarder le token et l’expiration dans la base ---
+            token = str(uuid.uuid4())
+            expire_time = datetime.utcnow() + timedelta(minutes=30)
+
+            reset_entry = ResetToken(
+                token=token,
+                user_id=user.id,
+                expire_at=expire_time
+            )
+            db.session.add(reset_entry)
+            db.session.commit()
+
+            # --- 3. Envoyer le mail ---
+            reset_link = url_for('authentication_blueprint.reset_password', token=token, _external=True)
+            message = Message(
+                subject="Réinitialisation de votre mot de passe",
+                recipients=[user.email],
+                body=f"Bonjour {user.username},\n\nCliquez sur ce lien pour réinitialiser votre mot de passe :\n{reset_link}\n\nCe lien expire dans 30 minutes.",
+                sender="no-reply@tonapp.com"
+            )
+            mail.send(message)
+
+            return render_template('authentication/forget.html',
+                                   msg="Un lien de réinitialisation a été envoyé par email.",
+                                   success=True,
+                                   form=forget_account_form)
+        else:
+            return render_template('authentication/forget.html',
+                                   msg="L'email n'existe pas",
+                                   success=False,
+                                   form=forget_account_form)
+
+    return render_template('authentication/forget.html', form=forget_account_form)
+
+@blueprint.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    form = ResetPasswordForm()
+    reset_entry = ResetToken.query.filter_by(token=token, used=False).first()
+
+    if not reset_entry or reset_entry.expire_at < datetime.utcnow():
+        return render_template('authentication/reset.html', msg="Lien invalide ou expiré", success=True, form=form)
+    print("ouiii")
+
+    if request.method == 'POST' :
+        if form.validate():
+            user = reset_entry.user
+            new_password = generate_password_hash(form.password.data)
+            user.password = new_password
+            reset_entry.used = True
+            print("okkkkkkkkkkkkkkkkkkkkk")
+
+            db.session.commit()
+            return render_template('authentication/reset.html',
+                                    msg="Mot de passe modifié avec succès",
+                                    success=True,
+                                    form=form)
+        else:
+            print(form.errors)
+
+
+    return render_template('authentication/reset.html', form=form)
+
+
 
 @blueprint.route('/logout')
 def logout():

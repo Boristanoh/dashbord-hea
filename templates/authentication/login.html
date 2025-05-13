@@ -60,7 +60,7 @@
                   <input class="form-check-input input-primary" type="checkbox" id="customCheckc1" checked="">
                   <label class="form-check-label text-muted" for="customCheckc1">Remember me?</label>
                 </div>
-                <a href="#" class="text-secondary f-w-400 mb-0">Forgot Password?</a>
+                <a href="{{ url_for('authentication_blueprint.forget') }}" class="text-secondary f-w-400 mb-0">Forgot Password?</a>
               </div>
               <div class="text-center mt-4">
                 <button type="submit" name="login" class="btn btn-primary shadow px-sm-4">Se connecter</button>

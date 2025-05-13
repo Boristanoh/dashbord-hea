@@ -93,7 +93,7 @@ class Users(db.Model, UserMixin):
             raise IntegrityError(error, 422)
         return
     
-    
+
 class Role(db.Model):
     __tablename__ = 'roles'
 
@@ -127,3 +127,14 @@ def request_loader(request):
 class OAuth(OAuthConsumerMixin, db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="cascade"), nullable=False)
     user = db.relationship(Users)
+
+class ResetToken(db.Model):
+    __tablename__ = 'reset_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(120), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    expire_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('Users', backref=db.backref('reset_tokens', lazy=True))
